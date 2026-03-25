@@ -4,6 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Vault | Private Identity</title>
+
+    <link rel="apple-touch-icon" href="icon.png">
+    <link rel="icon" type="image/png" href="icon.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="QR Vault">
+    <meta name="mobile-web-app-capable" content="yes">
+
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/qr-code-styling@1.5.0/lib/qr-code-styling.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -19,14 +27,18 @@
         }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .italic-black { font-weight: 900; font-style: italic; letter-spacing: -0.05em; }
+        
+        /* Ensure the app takes up the full screen on iOS */
+        @supports (-webkit-touch-callout: none) {
+          .min-h-screen { min-height: -webkit-fill-available; }
+        }
     </style>
 </head>
 <body class="flex flex-col items-center">
 
-    <!-- Header Section -->
     <header class="w-full max-w-md pt-14 pb-4 px-8 flex justify-between items-start z-[100]">
         <div class="flex flex-col">
-            <h1 class="text-5xl italic-black leading-none">VAULT</h1>
+            <h1 class="text-5xl italic-black leading-none text-white">VAULT</h1>
             <p class="text-[10px] font-black tracking-[0.3em] text-indigo-500 uppercase mt-2">Private Identity</p>
         </div>
         <div class="flex gap-3">
@@ -39,12 +51,9 @@
         </div>
     </header>
 
-    <!-- Card Stack Area -->
-    <main id="card-container" class="relative w-full max-w-[350px] flex-1 mt-6 flex items-center justify-center card-stack">
-        <!-- Cards injected here -->
-    </main>
+    <main id="card-container" class="relative w-full max-w-[350px] flex-1 mt-6 flex items-center justify-center">
+        </main>
 
-    <!-- Footer Swipe Indicator -->
     <footer class="w-full py-10 flex flex-col items-center gap-4 z-[100]">
         <div id="dots-container" class="flex gap-2"></div>
         <div class="flex flex-col items-center opacity-30">
@@ -53,7 +62,6 @@
         </div>
     </footer>
 
-    <!-- Overlays -->
     <div id="forge-overlay" class="fixed inset-0 z-[200] bg-black hidden flex items-end justify-center px-4 pb-4"></div>
     <div id="directory-overlay" class="fixed inset-0 z-[180] bg-black/98 backdrop-blur-3xl hidden flex flex-col p-8 pt-32"></div>
 
@@ -85,7 +93,7 @@
             } else {
                 cards.forEach((card, i) => {
                     const offset = (i - currentIndex + cards.length) % cards.length;
-                    if (offset > 2) return; // Only show top 3 cards for performance
+                    if (offset > 2) return;
 
                     const cardEl = document.createElement('div');
                     cardEl.className = "absolute top-0 w-full h-[480px] rounded-[3.5rem] shadow-[0_30px_60px_rgba(0,0,0,0.5)] flex flex-col transition-all duration-500 ease-out border border-white/5";
@@ -111,7 +119,6 @@
                                 <img src="${platform.logo}" class="w-8 h-8 object-contain opacity-90">
                             </div>
                         </div>
-                        
                         <div class="flex-1 flex flex-col items-center justify-center px-10">
                             <div class="p-4 bg-white/5 backdrop-blur-2xl rounded-[2.5rem] border border-white/10 relative" id="qr-${i}">
                                 <div class="absolute -top-2 -right-2 w-7 h-7 bg-white text-black rounded-full flex items-center justify-center shadow-lg">
@@ -143,10 +150,10 @@
         document.body.addEventListener('touchend', e => {
             if (cards.length < 2) return;
             const diff = e.changedTouches[0].clientY - startY;
-            if (diff < -50) { // Swipe Up
+            if (diff < -50) { 
                 currentIndex = (currentIndex + 1) % cards.length;
                 render();
-            } else if (diff > 50) { // Swipe Down
+            } else if (diff > 50) {
                 currentIndex = (currentIndex - 1 + cards.length) % cards.length;
                 render();
             }
@@ -159,8 +166,8 @@
             overlay.innerHTML = `
                 <div class="bg-neutral-900 w-full max-w-lg rounded-[3.5rem] p-8 border border-white/5 shadow-2xl">
                     <div class="flex justify-between items-center mb-8">
-                        <h3 class="text-2xl italic-black uppercase">Forge Entry</h3>
-                        <button onclick="closeOverlay('forge-overlay')" class="w-10 h-10 bg-black rounded-xl flex items-center justify-center"><i data-lucide="x" class="w-5 h-5"></i></button>
+                        <h3 class="text-2xl italic-black uppercase text-white">Forge Entry</h3>
+                        <button onclick="closeOverlay('forge-overlay')" class="w-10 h-10 bg-black rounded-xl flex items-center justify-center"><i data-lucide="x" class="w-5 h-5 text-white"></i></button>
                     </div>
                     <div class="space-y-6">
                         <div class="grid grid-cols-4 gap-2">
@@ -183,7 +190,7 @@
             const p = PLATFORMS.find(x => x.id === id);
             tempCard.platformId = id;
             tempCard.bgColor = p.color;
-            openForge(); // re-render inputs
+            openForge();
         }
 
         function saveCard() {
@@ -201,7 +208,7 @@
             overlay.classList.remove('hidden');
             overlay.innerHTML = `
                 <div class="flex justify-between items-center mb-10">
-                    <h2 class="text-4xl italic-black uppercase">Directory</h2>
+                    <h2 class="text-4xl italic-black uppercase text-white">Directory</h2>
                     <button onclick="closeOverlay('directory-overlay')" class="w-12 h-12 bg-white text-black rounded-2xl flex items-center justify-center"><i data-lucide="x"></i></button>
                 </div>
                 <div class="space-y-3 overflow-y-auto no-scrollbar">
@@ -209,7 +216,7 @@
                         <div class="bg-white/5 p-4 rounded-3xl flex items-center justify-between border border-white/5">
                             <div class="flex items-center gap-3">
                                 <div class="w-10 h-10 bg-white rounded-lg p-2"><img src="${PLATFORMS.find(p => p.id === c.platformId).logo}" class="w-full h-full object-contain"></div>
-                                <span class="font-bold text-xs uppercase opacity-70">${c.handle}</span>
+                                <span class="font-bold text-xs uppercase opacity-70 text-white">${c.handle}</span>
                             </div>
                             <button onclick="deleteCard('${c.id}')" class="text-red-500 p-2"><i data-lucide="trash-2" class="w-5 h-5"></i></button>
                         </div>
@@ -231,4 +238,5 @@
     </script>
 </body>
 </html>
+
 

@@ -3,75 +3,71 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>QR Swiper Pro</title>
-    <!-- Tailwind CDN -->
+    <title>Vault | Private Identity</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- QR Code Library -->
     <script src="https://unpkg.com/qr-code-styling@1.5.0/lib/qr-code-styling.js"></script>
-    <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        body { background-color: #030303; color: white; -webkit-tap-highlight-color: transparent; overflow: hidden; }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .card-stack { perspective: 1000px; }
-        input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            height: 24px;
-            width: 24px;
-            border-radius: 50%;
-            background: #6366f1;
-            cursor: pointer;
-            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        body { 
+            background-color: #030303; 
+            color: white; 
+            font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent; 
+            overflow: hidden; 
+            height: 100vh;
         }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .italic-black { font-weight: 900; font-style: italic; letter-spacing: -0.05em; }
     </style>
 </head>
-<body class="font-sans antialiased select-none">
+<body class="flex flex-col items-center">
 
-    <div id="app" class="min-h-screen flex flex-col items-center p-6">
-        <!-- Header -->
-        <header class="relative z-[150] w-full max-w-md flex justify-between items-center pt-10 pb-4 px-2">
-            <div class="flex flex-col">
-                <h1 class="text-5xl font-black italic tracking-tighter text-white leading-none">VAULT</h1>
-                <div class="w-12 h-1.5 bg-indigo-600 rounded-full mt-2"></div>
-            </div>
-            <div class="flex gap-4">
-                <button onclick="toggleDirectory()" class="w-14 h-14 bg-neutral-900 rounded-[1.5rem] flex items-center justify-center border border-white/10 active:scale-90 transition-all shadow-xl">
-                    <i data-lucide="settings" class="w-6 h-6 text-white"></i>
-                </button>
-                <button onclick="openForge()" class="w-14 h-14 bg-white text-black rounded-[1.5rem] flex items-center justify-center shadow-2xl active:scale-90 transition-all">
-                    <i data-lucide="plus" class="w-8 h-8"></i>
-                </button>
-            </div>
-        </header>
+    <!-- Header Section -->
+    <header class="w-full max-w-md pt-14 pb-4 px-8 flex justify-between items-start z-[100]">
+        <div class="flex flex-col">
+            <h1 class="text-5xl italic-black leading-none">VAULT</h1>
+            <p class="text-[10px] font-black tracking-[0.3em] text-indigo-500 uppercase mt-2">Private Identity</p>
+        </div>
+        <div class="flex gap-3">
+            <button onclick="toggleDirectory()" class="w-12 h-12 bg-neutral-900 rounded-2xl flex items-center justify-center border border-white/5 active:scale-90 transition-all">
+                <i data-lucide="settings" class="w-5 h-5 opacity-70"></i>
+            </button>
+            <button onclick="openForge()" class="w-12 h-12 bg-white text-black rounded-2xl flex items-center justify-center shadow-xl active:scale-90 transition-all">
+                <i data-lucide="plus" class="w-6 h-6"></i>
+            </button>
+        </div>
+    </header>
 
-        <!-- Main Viewport -->
-        <main id="card-container" class="relative z-20 w-full max-w-[340px] h-[520px] mt-12 flex items-center justify-center">
-            <!-- Cards or Empty State injected here -->
-        </main>
+    <!-- Card Stack Area -->
+    <main id="card-container" class="relative w-full max-w-[350px] flex-1 mt-6 flex items-center justify-center card-stack">
+        <!-- Cards injected here -->
+    </main>
 
-        <!-- Pagination Dots -->
-        <div id="dots-container" class="mt-10 flex gap-2 transition-all duration-700"></div>
+    <!-- Footer Swipe Indicator -->
+    <footer class="w-full py-10 flex flex-col items-center gap-4 z-[100]">
+        <div id="dots-container" class="flex gap-2"></div>
+        <div class="flex flex-col items-center opacity-30">
+            <p class="text-[9px] font-black tracking-[0.4em] uppercase">Swipe for next</p>
+            <i data-lucide="chevron-down" class="w-4 h-4 mt-1"></i>
+        </div>
+    </footer>
 
-        <!-- Overlays (Forge, Directory, Cropper) -->
-        <div id="forge-overlay" class="fixed inset-0 z-[200] bg-black hidden flex items-end justify-center px-4 pb-4"></div>
-        <div id="directory-overlay" class="fixed inset-0 z-[180] bg-black/98 backdrop-blur-3xl hidden flex flex-col p-8 pt-32"></div>
-        <div id="cropper-overlay" class="fixed inset-0 z-[600] bg-black hidden flex flex-col items-center justify-center p-6"></div>
-    </div>
+    <!-- Overlays -->
+    <div id="forge-overlay" class="fixed inset-0 z-[200] bg-black hidden flex items-end justify-center px-4 pb-4"></div>
+    <div id="directory-overlay" class="fixed inset-0 z-[180] bg-black/98 backdrop-blur-3xl hidden flex flex-col p-8 pt-32"></div>
 
     <script>
         const PLATFORMS = [
-            { id: 'twitter', name: 'Twitter', color: '#1DA1F2', icon: 'twitter', defaultLogo: 'https://cdn-icons-png.flaticon.com/512/733/733579.png' },
-            { id: 'instagram', name: 'Instagram', color: '#E4405F', icon: 'instagram', defaultLogo: 'https://cdn-icons-png.flaticon.com/512/174/174855.png' },
-            { id: 'linkedin', name: 'LinkedIn', color: '#0077B5', icon: 'linkedin', defaultLogo: 'https://cdn-icons-png.flaticon.com/512/174/174857.png' },
-            { id: 'website', name: 'Website', color: '#4CAF50', icon: 'globe', defaultLogo: 'https://cdn-icons-png.flaticon.com/512/1006/1006771.png' },
-            { id: 'custom', name: 'Custom', color: '#6366F1', icon: 'fingerprint', defaultLogo: null }
+            { id: 'twitter', name: 'Twitter', color: '#1DA1F2', icon: 'twitter', logo: 'https://cdn-icons-png.flaticon.com/512/733/733579.png' },
+            { id: 'instagram', name: 'Instagram', color: '#E4405F', icon: 'instagram', logo: 'https://cdn-icons-png.flaticon.com/512/174/174855.png' },
+            { id: 'linkedin', name: 'LinkedIn', color: '#0077B5', icon: 'linkedin', logo: 'https://cdn-icons-png.flaticon.com/512/174/174857.png' },
+            { id: 'website', name: 'Website', color: '#4CAF50', icon: 'globe', logo: 'https://cdn-icons-png.flaticon.com/512/1006/1006771.png' }
         ];
 
-        let cards = JSON.parse(localStorage.getItem('qr-vault-mobile-v1') || '[]');
+        let cards = JSON.parse(localStorage.getItem('qr-vault-v30') || '[]');
         let currentIndex = 0;
-        let isLocked = false;
-        let editingId = null;
-        let tempCard = { platformId: 'twitter', handle: '', url: '', bgColor: '#1DA1F2', bgImage: null, customIcon: null };
+        let tempCard = { platformId: 'twitter', handle: '', url: '', bgColor: '#1DA1F2' };
 
         function render() {
             const container = document.getElementById('card-container');
@@ -81,109 +77,102 @@
 
             if (cards.length === 0) {
                 container.innerHTML = `
-                    <div class="w-full h-[480px] bg-neutral-900/10 border-2 border-dashed border-white/5 rounded-[4rem] flex flex-col items-center justify-center p-12 text-center gap-10">
-                        <div class="w-24 h-24 bg-indigo-600/10 rounded-full flex items-center justify-center"><i data-lucide="qr-code" class="text-indigo-500 w-12 h-12"></i></div>
-                        <div class="space-y-3">
-                            <h3 class="text-2xl font-black italic uppercase tracking-tighter">Vault Empty</h3>
-                            <p class="text-neutral-500 text-[10px] font-black tracking-widest uppercase opacity-60">Forge your first digital identity.</p>
-                        </div>
-                        <button onclick="openForge()" class="bg-white text-black px-10 py-5 rounded-[2rem] font-black uppercase tracking-[0.2em] text-[10px] active:scale-95 shadow-2xl">Forge Entry</button>
+                    <div class="text-center opacity-20 flex flex-col items-center gap-4">
+                        <i data-lucide="shield-off" class="w-12 h-12"></i>
+                        <p class="text-xs font-bold tracking-widest uppercase">No Identities Found</p>
                     </div>
                 `;
             } else {
                 cards.forEach((card, i) => {
-                    const isActive = i === currentIndex;
                     const offset = (i - currentIndex + cards.length) % cards.length;
-                    const zIndex = 100 - offset;
-                    const yPos = offset * 20;
-                    const scale = 1 - (offset * 0.05);
-                    const opacity = offset > 3 ? 0 : 1;
+                    if (offset > 2) return; // Only show top 3 cards for performance
 
                     const cardEl = document.createElement('div');
-                    cardEl.className = "absolute top-0 w-full h-[480px] rounded-[3.5rem] shadow-2xl overflow-hidden flex flex-col transition-all duration-500 ease-out";
+                    cardEl.className = "absolute top-0 w-full h-[480px] rounded-[3.5rem] shadow-[0_30px_60px_rgba(0,0,0,0.5)] flex flex-col transition-all duration-500 ease-out border border-white/5";
+                    
+                    const scale = 1 - (offset * 0.06);
+                    const yPos = offset * 25;
                     cardEl.style.cssText = `
                         transform: translate3d(0, ${yPos}px, 0) scale(${scale});
-                        z-index: ${zIndex};
-                        opacity: ${opacity};
+                        z-index: ${100 - offset};
                         background-color: ${card.bgColor};
-                        background-image: ${card.bgImage ? `linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0) 40%, rgba(0,0,0,0.9) 100%), url(${card.bgImage})` : 'none'};
-                        background-size: cover;
                     `;
 
-                    const platform = PLATFORMS.find(p => p.id === card.platformId);
-                    const icon = card.customIcon || platform.defaultLogo;
+                    const platform = PLATFORMS.find(p => p.id === card.platformId) || PLATFORMS[0];
 
                     cardEl.innerHTML = `
-                        <div class="h-[120px] w-full flex items-end pb-4 px-10">
-                            <div class="flex items-center justify-between w-full">
-                                <div class="flex flex-col">
-                                    <h2 class="text-white text-3xl font-black italic uppercase leading-none">${card.platformId.toUpperCase()}</h2>
-                                    <span class="text-white/70 text-[11px] mt-1.5 uppercase font-bold">${card.handle}</span>
-                                </div>
-                                <div class="w-16 h-16 bg-white rounded-2xl p-3 shadow-xl"><img src="${icon}" class="w-full h-full object-contain"></div>
+                        <div class="pt-12 px-10 flex justify-between items-start">
+                            <div class="flex flex-col">
+                                <span class="text-[9px] font-black tracking-widest text-white/40 uppercase mb-1">Authenticated Identity</span>
+                                <h2 class="text-4xl italic-black uppercase leading-none text-white">${card.platformId}</h2>
+                                <div class="w-8 h-1 bg-white/20 rounded-full mt-3"></div>
+                            </div>
+                            <div class="w-14 h-14 bg-white/10 backdrop-blur-xl rounded-2xl flex items-center justify-center border border-white/10">
+                                <img src="${platform.logo}" class="w-8 h-8 object-contain opacity-90">
                             </div>
                         </div>
-                        <div class="flex-1 flex items-center justify-center p-8">
-                             <div class="p-5 bg-white/5 backdrop-blur-3xl rounded-[3rem] border border-white/10" id="qr-${i}"></div>
+                        
+                        <div class="flex-1 flex flex-col items-center justify-center px-10">
+                            <div class="p-4 bg-white/5 backdrop-blur-2xl rounded-[2.5rem] border border-white/10 relative" id="qr-${i}">
+                                <div class="absolute -top-2 -right-2 w-7 h-7 bg-white text-black rounded-full flex items-center justify-center shadow-lg">
+                                    <i data-lucide="shield-check" class="w-4 h-4"></i>
+                                </div>
+                            </div>
+                            <p class="mt-8 text-[11px] font-black tracking-[0.2em] text-white/60 uppercase">${card.handle}</p>
                         </div>
                     `;
 
                     container.appendChild(cardEl);
-                    
-                    // Generate QR
                     new QRCodeStyling({
-                        width: 200, height: 200, data: card.url, image: icon,
+                        width: 210, height: 210, data: card.url,
                         dotsOptions: { color: "#fff", type: "rounded" },
                         backgroundOptions: { color: "transparent" },
-                        imageOptions: { margin: 4, imageSize: 0.4 }
+                        cornersSquareOptions: { type: "extra-rounded", color: "#fff" }
                     }).append(document.getElementById(`qr-${i}`));
 
-                    // Dots
                     const dot = document.createElement('div');
-                    dot.className = `h-1.5 rounded-full transition-all duration-500 ${isActive ? 'w-10 bg-white' : 'w-1.5 bg-neutral-900'}`;
+                    dot.className = `h-1.5 rounded-full transition-all duration-500 ${i === currentIndex ? 'w-8 bg-white' : 'w-1.5 bg-neutral-800'}`;
                     dots.appendChild(dot);
                 });
             }
             lucide.createIcons();
         }
 
-        // Swipe Logic
-        let startX = 0;
-        document.getElementById('card-container').addEventListener('touchstart', e => startX = e.touches[0].clientX);
-        document.getElementById('card-container').addEventListener('touchend', e => {
-            const diff = e.changedTouches[0].clientX - startX;
-            if (Math.abs(diff) > 50) {
+        let startY = 0;
+        document.body.addEventListener('touchstart', e => startY = e.touches[0].clientY);
+        document.body.addEventListener('touchend', e => {
+            if (cards.length < 2) return;
+            const diff = e.changedTouches[0].clientY - startY;
+            if (diff < -50) { // Swipe Up
                 currentIndex = (currentIndex + 1) % cards.length;
+                render();
+            } else if (diff > 50) { // Swipe Down
+                currentIndex = (currentIndex - 1 + cards.length) % cards.length;
                 render();
             }
         });
 
         function openForge() {
-            editingId = null;
-            tempCard = { platformId: 'twitter', handle: '', url: '', bgColor: '#1DA1F2', bgImage: null, customIcon: null };
-            showForge();
-        }
-
-        function showForge() {
+            tempCard = { platformId: 'twitter', handle: '', url: '', bgColor: '#1DA1F2' };
             const overlay = document.getElementById('forge-overlay');
             overlay.classList.remove('hidden');
             overlay.innerHTML = `
-                <div class="bg-[#080808] w-full max-w-lg rounded-[4rem] p-10 border border-white/10 max-h-[96vh] overflow-y-auto no-scrollbar">
-                    <div class="flex justify-between items-center mb-10">
-                        <h3 class="text-3xl font-black italic uppercase">${editingId ? 'Refine' : 'Forge'}</h3>
-                        <button onclick="closeOverlay('forge-overlay')" class="w-12 h-12 bg-neutral-900 rounded-2xl flex items-center justify-center"><i data-lucide="x"></i></button>
+                <div class="bg-neutral-900 w-full max-w-lg rounded-[3.5rem] p-8 border border-white/5 shadow-2xl">
+                    <div class="flex justify-between items-center mb-8">
+                        <h3 class="text-2xl italic-black uppercase">Forge Entry</h3>
+                        <button onclick="closeOverlay('forge-overlay')" class="w-10 h-10 bg-black rounded-xl flex items-center justify-center"><i data-lucide="x" class="w-5 h-5"></i></button>
                     </div>
-                    <div class="space-y-8">
-                        <div class="grid grid-cols-5 gap-2">
+                    <div class="space-y-6">
+                        <div class="grid grid-cols-4 gap-2">
                             ${PLATFORMS.map(p => `
-                                <button onclick="selectPlatform('${p.id}')" class="h-12 rounded-xl flex items-center justify-center ${tempCard.platformId === p.id ? 'bg-white text-black' : 'bg-neutral-900 text-neutral-500'}">
+                                <button onclick="selectPlatform('${p.id}')" class="h-12 rounded-xl flex items-center justify-center ${tempCard.platformId === p.id ? 'bg-white text-black' : 'bg-black text-neutral-600'}">
                                     <i data-lucide="${p.icon}" class="w-5 h-5"></i>
                                 </button>
                             `).join('')}
                         </div>
-                        <input type="text" id="f-handle" placeholder="Handle" value="${tempCard.handle}" class="w-full bg-black border border-white/5 rounded-2xl p-6 text-white font-bold outline-none">
-                        <input type="url" id="f-url" placeholder="URL" value="${tempCard.url}" class="w-full bg-black border border-white/5 rounded-2xl p-6 text-white font-bold outline-none">
-                        <button onclick="saveCard()" class="w-full bg-indigo-600 text-white font-black py-6 rounded-[2.5rem] text-xl uppercase tracking-tighter shadow-2xl">Save Identity</button>
+                        <input type="text" id="f-handle" placeholder="@username" class="w-full bg-black border border-white/5 rounded-2xl p-5 text-white font-bold outline-none focus:border-indigo-500">
+                        <input type="url" id="f-url" placeholder="https://..." class="w-full bg-black border border-white/5 rounded-2xl p-5 text-white font-bold outline-none focus:border-indigo-500">
+                        <button onclick="saveCard()" class="w-full bg-indigo-600 text-white font-black py-5 rounded-[2rem] text-lg uppercase tracking-tighter active:scale-95 transition-all">Save Identity</button>
                     </div>
                 </div>
             `;
@@ -194,41 +183,35 @@
             const p = PLATFORMS.find(x => x.id === id);
             tempCard.platformId = id;
             tempCard.bgColor = p.color;
-            showForge();
+            openForge(); // re-render inputs
         }
 
         function saveCard() {
-            tempCard.handle = document.getElementById('f-handle').value;
-            tempCard.url = document.getElementById('f-url').value;
-            if (!tempCard.handle || !tempCard.url) return;
-            
-            if (editingId) {
-                cards = cards.map(c => c.id === editingId ? { ...tempCard, id: editingId } : c);
-            } else {
-                cards.push({ ...tempCard, id: Date.now().toString() });
-            }
-            
-            localStorage.setItem('qr-vault-mobile-v1', JSON.stringify(cards));
+            const h = document.getElementById('f-handle').value;
+            const u = document.getElementById('f-url').value;
+            if (!h || !u) return;
+            cards.push({ ...tempCard, handle: h, url: u, id: Date.now().toString() });
+            localStorage.setItem('qr-vault-v30', JSON.stringify(cards));
             closeOverlay('forge-overlay');
             render();
         }
 
         function toggleDirectory() {
             const overlay = document.getElementById('directory-overlay');
-            overlay.classList.toggle('hidden');
+            overlay.classList.remove('hidden');
             overlay.innerHTML = `
                 <div class="flex justify-between items-center mb-10">
-                    <h2 class="text-4xl font-black italic uppercase tracking-tighter">Directory</h2>
+                    <h2 class="text-4xl italic-black uppercase">Directory</h2>
                     <button onclick="closeOverlay('directory-overlay')" class="w-12 h-12 bg-white text-black rounded-2xl flex items-center justify-center"><i data-lucide="x"></i></button>
                 </div>
-                <div class="space-y-4 overflow-y-auto no-scrollbar">
+                <div class="space-y-3 overflow-y-auto no-scrollbar">
                     ${cards.map(c => `
-                        <div class="bg-neutral-900/60 p-4 rounded-3xl border border-white/5 flex items-center justify-between">
-                            <div class="flex items-center gap-4">
-                                <div class="w-12 h-12 bg-white rounded-xl p-2"><img src="${c.customIcon || PLATFORMS.find(p => p.id === c.platformId).defaultLogo}" class="w-full h-full object-contain"></div>
-                                <div class="flex flex-col"><span class="font-black text-xs uppercase">${c.handle}</span></div>
+                        <div class="bg-white/5 p-4 rounded-3xl flex items-center justify-between border border-white/5">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 bg-white rounded-lg p-2"><img src="${PLATFORMS.find(p => p.id === c.platformId).logo}" class="w-full h-full object-contain"></div>
+                                <span class="font-bold text-xs uppercase opacity-70">${c.handle}</span>
                             </div>
-                            <button onclick="deleteCard('${c.id}')" class="w-10 h-10 bg-red-600 rounded-xl flex items-center justify-center"><i data-lucide="trash-2" class="w-5 h-5"></i></button>
+                            <button onclick="deleteCard('${c.id}')" class="text-red-500 p-2"><i data-lucide="trash-2" class="w-5 h-5"></i></button>
                         </div>
                     `).join('')}
                 </div>
@@ -238,13 +221,12 @@
 
         function deleteCard(id) {
             cards = cards.filter(c => c.id !== id);
-            localStorage.setItem('qr-vault-mobile-v1', JSON.stringify(cards));
+            localStorage.setItem('qr-vault-v30', JSON.stringify(cards));
             toggleDirectory();
             render();
         }
 
         function closeOverlay(id) { document.getElementById(id).classList.add('hidden'); }
-
         window.onload = render;
     </script>
 </body>

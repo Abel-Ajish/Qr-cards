@@ -36,7 +36,6 @@
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
 
         #master-container {
             width: calc(100% / var(--app-scale));
@@ -52,7 +51,6 @@
 
         .italic-black { font-weight: 900; font-style: italic; letter-spacing: -0.05em; }
         
-        /* Card Stacking Logic */
         .card-stack-item {
             transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.4s ease, box-shadow 0.4s ease;
             will-change: transform, opacity;
@@ -145,12 +143,12 @@
             <div id="dots-container" class="flex gap-2"></div>
         </footer>
 
-        <!-- Overlays -->
         <div id="forge-overlay" class="overlay-bg items-end pb-6"></div>
         <div id="directory-overlay" class="overlay-bg flex-col !justify-start pt-24 pb-0"></div>
     </div>
 
     <script>
+        const FALLBACK_ICON = 'https://cdn-icons-png.flaticon.com/512/1067/1067562.png';
         const PLATFORMS = [
             { id: 'Instagram', color: '#E4405F', logo: 'https://cdn-icons-png.flaticon.com/512/174/174855.png' },
             { id: 'Twitter', color: '#1DA1F2', logo: 'https://cdn-icons-png.flaticon.com/512/733/733579.png' },
@@ -161,6 +159,7 @@
             { id: 'Snapchat', color: '#FFFC00', logo: 'https://cdn-icons-png.flaticon.com/512/174/174870.png' },
             { id: 'Discord', color: '#5865F2', logo: 'https://cdn-icons-png.flaticon.com/512/3670/3670157.png' },
             { id: 'Twitch', color: '#9146FF', logo: 'https://cdn-icons-png.flaticon.com/512/5968/5968819.png' },
+            // Replaced generic icon.png with a reliable global website icon
             { id: 'Website', color: '#4F46E5', logo: 'https://cdn-icons-png.flaticon.com/512/1006/1006771.png', forceWhite: true },
             { id: 'Custom', color: '#222222', logo: 'https://cdn-icons-png.flaticon.com/512/1828/1828817.png', forceWhite: true }
         ];
@@ -186,7 +185,6 @@
             }, 2500);
         }
 
-        // --- ASPECT RATIO CROPPING ENGINE ---
         async function processAndCropImage(dataUrl, targetWidth, targetHeight) {
             return new Promise((resolve) => {
                 const img = new Image();
@@ -195,23 +193,16 @@
                     canvas.width = targetWidth;
                     canvas.height = targetHeight;
                     const ctx = canvas.getContext('2d');
-
                     const targetRatio = targetWidth / targetHeight;
                     const imgRatio = img.width / img.height;
-
                     let sw, sh, sx, sy;
                     if (imgRatio > targetRatio) {
-                        sh = img.height;
-                        sw = img.height * targetRatio;
-                        sx = (img.width - sw) / 2;
-                        sy = 0;
+                        sh = img.height; sw = img.height * targetRatio;
+                        sx = (img.width - sw) / 2; sy = 0;
                     } else {
-                        sw = img.width;
-                        sh = img.width / targetRatio;
-                        sx = 0;
-                        sy = (img.height - sh) / 2;
+                        sw = img.width; sh = img.width / targetRatio;
+                        sx = 0; sy = (img.height - sh) / 2;
                     }
-
                     ctx.drawImage(img, sx, sy, sw, sh, 0, 0, targetWidth, targetHeight);
                     resolve(canvas.toDataURL('image/jpeg', 0.85));
                 };
@@ -263,11 +254,11 @@
                                     <div class="w-10 h-1 bg-white/30 rounded-full mt-4"></div>
                                 </div>
                                 <div class="w-14 h-14 bg-white/10 backdrop-blur-xl rounded-2xl flex items-center justify-center border border-white/20">
-                                    <img src="${p.logo}" class="w-8 h-8 object-contain ${p.forceWhite ? 'force-white' : ''}">
+                                    <img src="${p.logo}" onerror="this.src='${FALLBACK_ICON}'" class="w-8 h-8 object-contain ${p.forceWhite ? 'force-white' : ''}">
                                 </div>
                             </div>
                             <div class="flex-1 flex flex-col items-center justify-center">
-                                <div class="p-4 bg-white/10 backdrop-blur-2xl rounded-[2rem] border border-white/20" id="qr-${i}"></div>
+                                <div class="p-4 bg-white/10 backdrop-blur-2xl rounded-[2rem] border border-white/20 shadow-2xl" id="qr-${i}"></div>
                                 <p class="mt-8 text-[11px] font-black tracking-[0.3em] text-white uppercase bg-black/30 px-6 py-2 rounded-full border border-white/10">${card.handle}</p>
                             </div>
                         </div>
@@ -316,14 +307,8 @@
             };
         }
 
-        function openOverlay(id) {
-            const overlay = document.getElementById(id);
-            overlay.classList.add('active');
-        }
-
-        function closeOverlay(id) {
-            document.getElementById(id).classList.remove('active');
-        }
+        function openOverlay(id) { document.getElementById(id).classList.add('active'); }
+        function closeOverlay(id) { document.getElementById(id).classList.remove('active'); }
 
         function openForge() {
             tempCard = { platformId: 'Instagram', handle: '', url: '', bgColor: '#E4405F', customImage: null, qrLogo: null };
@@ -342,8 +327,8 @@
                     <div class="space-y-5">
                         <div class="platform-grid no-scrollbar">
                             ${PLATFORMS.map(p => `
-                                <button onclick="selectPlatform('${p.id}')" class="platform-btn h-14 rounded-2xl flex items-center justify-center ${tempCard.platformId === p.id ? 'bg-white' : 'bg-white/5 border border-white/5'}">
-                                    <img src="${p.logo}" class="${(p.forceWhite && tempCard.platformId !== p.id) ? 'force-white opacity-60' : ''}">
+                                <button onclick="selectPlatform('${p.id}')" class="platform-btn h-14 rounded-2xl flex items-center justify-center ${tempCard.platformId === p.id ? 'bg-white shadow-xl scale-105' : 'bg-white/5 border border-white/5'} transition-all">
+                                    <img src="${p.logo}" onerror="this.src='${FALLBACK_ICON}'" class="${(p.forceWhite && tempCard.platformId !== p.id) ? 'force-white opacity-60' : ''}">
                                 </button>`).join('')}
                         </div>
                         <input type="text" placeholder="@handle" value="${tempCard.handle}" oninput="tempCard.handle = this.value" class="glass-input w-full rounded-2xl px-5 py-4 text-white font-bold outline-none text-sm">
@@ -412,7 +397,7 @@
                             <div class="bg-white/5 p-3 rounded-2xl flex items-center justify-between border border-white/5">
                                 <div class="flex items-center gap-4">
                                     <div class="w-12 h-12 bg-black/40 rounded-xl overflow-hidden flex items-center justify-center border border-white/10">
-                                        <img src="${c.customImage || (PLATFORMS.find(p => p.id === c.platformId)?.logo)}" class="w-full h-full object-cover">
+                                        <img src="${c.customImage || (PLATFORMS.find(p => p.id === c.platformId)?.logo)}" onerror="this.src='${FALLBACK_ICON}'" class="w-full h-full object-cover">
                                     </div>
                                     <div class="flex flex-col">
                                         <span class="font-black text-[8px] text-indigo-400 uppercase tracking-tighter">${c.platformId}</span>

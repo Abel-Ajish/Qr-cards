@@ -1,426 +1,1320 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Vault | Private Identity</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>QR Identity Vault</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --scale: 1;
+  --accent: #6366f1;
+  --accent2: #818cf8;
+  --accent-glow: rgba(99,102,241,0.4);
+  --bg: #06060a;
+  --bg2: #0d0d14;
+  --glass: rgba(255,255,255,0.04);
+  --glass-border: rgba(255,255,255,0.08);
+  --text: #f1f1f8;
+  --text-dim: rgba(241,241,248,0.5);
+  --radius: 2.4rem;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  width: 100%; height: 100%; overflow: hidden;
+  background: var(--bg);
+  font-family: 'Space Grotesk', sans-serif;
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  touch-action: none;
+  user-select: none;
+}
+body {
+  background:
+    radial-gradient(ellipse 80% 60% at 50% -10%, rgba(99,102,241,0.18) 0%, transparent 70%),
+    radial-gradient(ellipse 60% 80% at 80% 110%, rgba(99,102,241,0.10) 0%, transparent 60%),
+    var(--bg);
+}
+body::before {
+  content:''; position:fixed; inset:0; z-index:0; pointer-events:none; opacity:0.025;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size:128px 128px;
+}
+#app { position:fixed; inset:0; display:flex; flex-direction:column; z-index:1; }
 
-    <!-- External Libraries -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/qr-code-styling@1.5.0/lib/qr-code-styling.js"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
-    
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&display=swap');
-        
-        :root {
-            --app-scale: 1.0;
-        }
+/* ── HEADER ── */
+#header {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:1.1rem 1.4rem 0.5rem; position:relative; z-index:10; flex-shrink:0;
+}
+#header-logo { display:flex; align-items:center; gap:0.6rem; }
+#header-logo-icon {
+  width:36px; height:36px; border-radius:10px; flex-shrink:0;
+  background:linear-gradient(135deg, var(--accent), #a78bfa);
+  display:flex; align-items:center; justify-content:center;
+  box-shadow:0 0 20px var(--accent-glow);
+}
+#header-logo-icon svg { width:18px; height:18px; color:#fff; }
+.logo-text { font-family:'Syne',sans-serif; font-weight:800; font-size:1.05rem; letter-spacing:-0.02em; }
+.logo-sub { font-size:0.58rem; letter-spacing:0.12em; text-transform:uppercase; color:var(--text-dim); margin-top:-2px; }
+#header-actions { display:flex; gap:0.5rem; }
+.icon-btn {
+  width:40px; height:40px; border-radius:12px;
+  background:var(--glass); border:1px solid var(--glass-border);
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; transition:all 0.2s; color:var(--text);
+  backdrop-filter:blur(10px); flex-shrink:0;
+}
+.icon-btn:hover,.icon-btn:active { background:rgba(99,102,241,0.2); border-color:var(--accent); }
+.icon-btn svg { width:18px; height:18px; }
 
-        body { 
-            background: radial-gradient(circle at 50% -20%, #1a1a2e 0%, #030303 60%);
-            background-color: #030303; 
-            color: white; 
-            font-family: 'Inter', sans-serif;
-            -webkit-tap-highlight-color: transparent; 
-            overflow: hidden; 
-            height: 100vh;
-            height: 100dvh;
-            width: 100vw;
-            margin: 0;
-            display: flex;
-            justify-content: center;
-        }
+/* ── STAGE ── */
+#stage {
+  flex:1; display:flex; align-items:center; justify-content:center;
+  position:relative; overflow:hidden; perspective:1400px; min-height:0;
+}
+#empty-state {
+  display:none; flex-direction:column; align-items:center; gap:1rem;
+  opacity:0.55; pointer-events:none; text-align:center; padding:2rem;
+}
+#empty-state.visible { display:flex; }
+#empty-state svg { width:60px; height:60px; color:var(--accent); opacity:0.45; }
+#empty-state p { font-size:0.88rem; color:var(--text-dim); max-width:200px; line-height:1.55; }
 
-        /* Custom Scrollbar */
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+/* ── CARD WRAPPER ── */
+.card-wrapper {
+  position:absolute; cursor:grab;
+  transform-origin:center center; will-change:transform;
+}
+.card-wrapper:active { cursor:grabbing; }
+.card-wrapper.is-dragging .id-card {
+  box-shadow:0 0 0 1.5px rgba(99,102,241,0.6), 0 40px 100px rgba(0,0,0,0.9), 0 0 80px var(--accent-glow) !important;
+}
 
-        #master-container {
-            width: calc(100% / var(--app-scale));
-            height: calc(100% / var(--app-scale));
-            transform-origin: top center;
-            transform: scale(var(--app-scale));
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            transition: transform 0.3s cubic-bezier(0.2, 0, 0, 1);
-            position: relative;
-        }
+/* ── CARD ── */
+.id-card {
+  width:100%; height:100%; border-radius:var(--radius);
+  overflow:hidden; position:relative;
+  box-shadow:0 0 0 1px var(--glass-border), 0 28px 70px rgba(0,0,0,0.75), 0 0 55px var(--accent-glow);
+}
+.card-bg {
+  position:absolute; inset:0;
+  background:linear-gradient(155deg,#1a1a2e 0%,#0d0d1a 100%);
+  background-size:cover; background-position:center;
+}
+.card-bg::after {
+  content:''; position:absolute; inset:0;
+  background:linear-gradient(to bottom, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.55) 50%, rgba(0,0,0,0.93) 100%);
+}
+.card-shimmer {
+  position:absolute; inset:0; pointer-events:none; border-radius:var(--radius);
+  background:linear-gradient(135deg,transparent 30%,rgba(255,255,255,0.035) 50%,transparent 70%);
+  opacity:0; transition:opacity 0.3s;
+}
+.id-card:hover .card-shimmer { opacity:1; }
+.card-body { position:absolute; inset:0; display:flex; flex-direction:column; }
+.card-badge {
+  align-self:flex-start;
+  background:rgba(99,102,241,0.28); border:1px solid rgba(99,102,241,0.45);
+  border-radius:100px; font-weight:600; letter-spacing:0.1em; text-transform:uppercase;
+  color:var(--accent2); backdrop-filter:blur(10px); margin-bottom:auto;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:90%;
+}
+.card-qr-zone { display:flex; flex-direction:column; align-items:center; margin-top:auto; }
+.qr-frame {
+  background:rgba(255,255,255,0.97); position:relative;
+  box-shadow:0 6px 28px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.08);
+}
+.qr-frame img { display:block; }
+.qr-logo-overlay {
+  position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+  border-radius:50%; overflow:hidden; border:2px solid #fff;
+  box-shadow:0 2px 8px rgba(0,0,0,0.4); background:#fff;
+}
+.qr-logo-overlay img { width:100%; height:100%; object-fit:cover; display:block; }
+.card-info { text-align:center; }
+.card-name {
+  font-family:'Syne',sans-serif; font-weight:800; line-height:1.1; letter-spacing:-0.02em;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:90%; margin:0 auto;
+}
+.card-handle { color:var(--text-dim); letter-spacing:0.03em; margin-top:0.12em; }
+.qr-placeholder {
+  display:flex; align-items:center; justify-content:center;
+  background:linear-gradient(135deg,#dde,#ccd);
+}
 
-        .italic-black { font-weight: 900; font-style: italic; letter-spacing: -0.05em; }
-        
-        .card-stack-item {
-            transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.4s ease, box-shadow 0.4s ease;
-            will-change: transform, opacity;
-        }
-        .card-dragging { transition: none !important; }
+/* ── SWIPE HINT ── */
+#swipe-hint {
+  position:absolute; bottom:1rem; left:50%; transform:translateX(-50%);
+  display:none; flex-direction:column; align-items:center; gap:3px;
+  opacity:0.28; pointer-events:none; animation:float 2.2s ease-in-out infinite;
+}
+#swipe-hint.visible { display:flex; }
+#swipe-hint svg { width:15px; height:15px; color:var(--accent2); }
+#swipe-hint span { font-size:0.52rem; letter-spacing:0.12em; text-transform:uppercase; color:var(--text-dim); }
+@keyframes float { 0%,100%{transform:translateX(-50%) translateY(0)} 50%{transform:translateX(-50%) translateY(-4px)} }
 
-        .platform-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 12px;
-            max-height: 200px;
-            overflow-y: auto;
-            padding: 4px;
-        }
+/* ── NAV DOTS ── */
+#nav-dots {
+  display:flex; justify-content:center; gap:0.4rem;
+  padding:0.4rem 1rem 0.8rem; flex-shrink:0; min-height:28px; align-items:center;
+}
+.nav-dot {
+  width:6px; height:6px; border-radius:50%;
+  background:rgba(255,255,255,0.18); transition:all 0.25s; cursor:pointer;
+}
+.nav-dot.active { background:var(--accent); width:20px; border-radius:3px; }
 
-        .platform-btn img {
-            width: 26px;
-            height: 26px;
-            object-fit: contain;
-            transition: transform 0.2s ease;
-        }
-        .platform-btn:active img { transform: scale(0.9); }
+/* ── OVERLAY BASE ── */
+.overlay {
+  position:fixed; inset:0; z-index:100;
+  display:flex; flex-direction:column;
+  opacity:0; pointer-events:none;
+  transition:opacity 0.3s cubic-bezier(0.4,0,0.2,1);
+}
+.overlay.open { opacity:1; pointer-events:all; }
+.overlay-backdrop {
+  position:absolute; inset:0;
+  backdrop-filter:blur(22px); background:rgba(6,6,10,0.82);
+}
+.overlay-header {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:1.1rem 1.4rem; border-bottom:1px solid var(--glass-border);
+  flex-shrink:0; position:relative; z-index:1;
+}
+.overlay-title { font-family:'Syne',sans-serif; font-weight:800; font-size:1.15rem; letter-spacing:-0.02em; }
 
-        .force-white { filter: brightness(0) invert(1); }
-        .glass-input {
-            background: rgba(255,255,255,0.03);
-            border: 1px solid rgba(255,255,255,0.1);
-            transition: all 0.3s ease;
-        }
-        .glass-input:focus {
-            background: rgba(255,255,255,0.06);
-            border-color: rgba(99, 102, 241, 0.6);
-            box-shadow: 0 0 15px rgba(99, 102, 241, 0.2);
-        }
+/* ── DIRECTORY ── */
+#dir-overlay { background:transparent; }
+#dir-overlay .overlay-inner {
+  position:relative; z-index:1; display:flex; flex-direction:column;
+  height:100%; background:rgba(10,10,18,0.6);
+}
+#dir-list {
+  flex:1; overflow-y:auto; padding:0.9rem 1.2rem;
+  display:flex; flex-direction:column; gap:0.65rem; overscroll-behavior:contain;
+}
+#dir-list::-webkit-scrollbar { width:3px; }
+#dir-list::-webkit-scrollbar-thumb { background:var(--accent); border-radius:2px; }
+.dir-card {
+  display:flex; align-items:center; gap:0.9rem;
+  background:var(--glass); border:1px solid var(--glass-border);
+  border-radius:1.1rem; padding:0.85rem 0.9rem;
+  cursor:pointer; transition:all 0.2s; position:relative; overflow:hidden;
+}
+.dir-card::before {
+  content:''; position:absolute; left:0; top:0; bottom:0; width:3px;
+  background:var(--accent); transform:scaleY(0); transition:transform 0.2s; transform-origin:center;
+}
+.dir-card:hover { background:rgba(99,102,241,0.08); border-color:rgba(99,102,241,0.25); }
+.dir-card:hover::before { transform:scaleY(1); }
+.dir-card-thumb {
+  width:44px; height:60px; border-radius:0.7rem;
+  background:linear-gradient(135deg,#1a1a2e,#2a2a40);
+  flex-shrink:0; background-size:cover; background-position:center;
+  border:1px solid var(--glass-border);
+}
+.dir-card-info { flex:1; min-width:0; }
+.dir-card-name { font-weight:700; font-size:0.9rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.dir-card-handle { font-size:0.72rem; color:var(--text-dim); margin-top:2px; }
+.dir-card-platform {
+  font-size:0.58rem; text-transform:uppercase; letter-spacing:0.1em;
+  background:rgba(99,102,241,0.18); color:var(--accent2);
+  padding:2px 7px; border-radius:100px; margin-top:5px; display:inline-block;
+}
+.dir-delete {
+  width:32px; height:32px; border-radius:8px;
+  border:1px solid rgba(239,68,68,0.28); background:rgba(239,68,68,0.08);
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; color:#f87171; transition:all 0.2s; flex-shrink:0;
+}
+.dir-delete:hover { background:rgba(239,68,68,0.22); border-color:rgba(239,68,68,0.5); }
+.dir-delete svg { width:14px; height:14px; }
+.scale-section {
+  padding:0.9rem 1.2rem; border-top:1px solid var(--glass-border);
+  flex-shrink:0; position:relative; z-index:1;
+}
+.scale-label {
+  display:flex; justify-content:space-between; align-items:center;
+  font-size:0.72rem; color:var(--text-dim); margin-bottom:0.55rem;
+}
+.scale-label strong { color:var(--text); font-size:0.8rem; }
+input[type=range] {
+  width:100%; height:4px; border-radius:2px;
+  appearance:none; background:var(--glass-border); outline:none; cursor:pointer;
+}
+input[type=range]::-webkit-slider-thumb {
+  appearance:none; width:18px; height:18px; border-radius:50%;
+  background:var(--accent); border:2px solid rgba(255,255,255,0.25);
+  box-shadow:0 0 10px var(--accent-glow); cursor:pointer;
+}
 
-        input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; }
-        input[type=range]::-webkit-slider-thumb {
-            -webkit-appearance: none; height: 24px; width: 24px; border-radius: 50%;
-            background: #6366f1; cursor: pointer; margin-top: -10px;
-            box-shadow: 0 0 15px rgba(99, 102, 241, 0.6); border: 2px solid white;
-        }
-        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; }
+/* ── FORGE ── */
+#forge-overlay { justify-content:flex-end; background:transparent; }
+#forge-overlay .overlay-backdrop { background:rgba(6,6,10,0.7); }
+#forge-overlay .overlay-inner {
+  position:relative; z-index:1;
+  background:var(--bg2); border-radius:2rem 2rem 0 0;
+  border:1px solid var(--glass-border); border-bottom:none;
+  max-height:90vh; display:flex; flex-direction:column;
+  transform:translateY(100%);
+  transition:transform 0.42s cubic-bezier(0.34,1.3,0.64,1);
+}
+#forge-overlay.open .overlay-inner { transform:translateY(0); }
+#forge-overlay .overlay-content {
+  flex:1; overflow-y:auto; padding:1rem 1.3rem 1.5rem;
+  display:flex; flex-direction:column; gap:1.1rem;
+  overscroll-behavior:contain;
+}
+#forge-overlay .overlay-content::-webkit-scrollbar { width:3px; }
+#forge-overlay .overlay-content::-webkit-scrollbar-thumb { background:var(--accent); border-radius:2px; }
+.field-group { display:flex; flex-direction:column; gap:0.38rem; }
+.field-label { font-size:0.68rem; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-dim); }
+.field-opt { font-weight:400; text-transform:none; letter-spacing:0; color:var(--text-dim); }
+.field-input {
+  background:var(--glass); border:1px solid var(--glass-border);
+  border-radius:0.85rem; padding:0.78rem 1rem;
+  color:var(--text); font-family:'Space Grotesk',sans-serif;
+  font-size:0.88rem; outline:none; transition:border-color 0.2s; width:100%;
+}
+.field-input:focus { border-color:var(--accent); }
+.field-input.has-error { border-color:#f87171 !important; }
+select.field-input option { background:#1a1a2e; }
+.field-error { font-size:0.68rem; color:#f87171; margin-top:0.15rem; display:none; }
+.field-error.show { display:block; }
+.upload-btn {
+  background:var(--glass); border:1px dashed var(--glass-border);
+  border-radius:0.85rem; padding:0.85rem 1rem;
+  display:flex; align-items:center; gap:0.7rem;
+  transition:all 0.2s; color:var(--text-dim);
+  font-size:0.82rem; font-family:'Space Grotesk',sans-serif;
+  position:relative; overflow:hidden; cursor:pointer;
+}
+.upload-btn:hover { border-color:var(--accent); color:var(--accent2); }
+.upload-btn input[type=file] { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%; }
+.upload-btn svg { width:17px; height:17px; flex-shrink:0; pointer-events:none; }
+.upload-thumb {
+  width:36px; height:36px; border-radius:7px; flex-shrink:0;
+  background-size:cover; background-position:center;
+  border:1px solid var(--glass-border); display:none; pointer-events:none;
+}
+.forge-submit {
+  width:100%; background:linear-gradient(135deg,var(--accent),#a78bfa);
+  border:none; border-radius:0.85rem; padding:0.9rem;
+  color:#fff; font-family:'Syne',sans-serif; font-size:1rem; font-weight:800;
+  cursor:pointer; transition:all 0.2s; letter-spacing:0.02em;
+  box-shadow:0 6px 24px var(--accent-glow);
+  display:flex; align-items:center; justify-content:center; gap:0.5rem;
+  min-height:52px;
+}
+.forge-submit:hover:not(:disabled) { transform:translateY(-2px); box-shadow:0 10px 36px var(--accent-glow); }
+.forge-submit:active:not(:disabled) { transform:translateY(0); }
+.forge-submit:disabled { opacity:0.5; cursor:not-allowed; transform:none; }
+.spinner {
+  width:16px; height:16px; border-radius:50%;
+  border:2px solid rgba(255,255,255,0.3); border-top-color:#fff;
+  animation:spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform:rotate(360deg); } }
 
-        @keyframes fadeIn { from { opacity: 0; backdrop-filter: blur(0px); } to { opacity: 1; backdrop-filter: blur(20px); } }
-        @keyframes slideUp { from { opacity: 0; transform: translateY(40px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
+/* ── CONFIRM DIALOG ── */
+#confirm-dialog {
+  position:fixed; inset:0; z-index:200; display:none;
+  align-items:center; justify-content:center; padding:1.5rem;
+}
+#confirm-dialog.open { display:flex; }
+#confirm-dialog .cd-backdrop {
+  position:absolute; inset:0; backdrop-filter:blur(8px); background:rgba(0,0,0,0.65);
+}
+#confirm-dialog .cd-box {
+  position:relative; z-index:1; background:#141420;
+  border:1px solid var(--glass-border); border-radius:1.4rem; padding:1.6rem;
+  max-width:300px; width:100%; box-shadow:0 20px 60px rgba(0,0,0,0.8);
+}
+.cd-title { font-family:'Syne',sans-serif; font-weight:800; font-size:1rem; margin-bottom:0.5rem; }
+.cd-msg { font-size:0.82rem; color:var(--text-dim); line-height:1.5; }
+.cd-actions { display:flex; gap:0.6rem; margin-top:1.2rem; }
+.cd-cancel {
+  flex:1; background:var(--glass); border:1px solid var(--glass-border);
+  border-radius:0.7rem; padding:0.65rem; color:var(--text);
+  font-family:'Space Grotesk',sans-serif; font-size:0.85rem; cursor:pointer; transition:all 0.2s;
+}
+.cd-cancel:hover { background:rgba(255,255,255,0.08); }
+.cd-confirm-btn {
+  flex:1; background:rgba(239,68,68,0.14); border:1px solid rgba(239,68,68,0.38);
+  border-radius:0.7rem; padding:0.65rem; color:#f87171;
+  font-family:'Syne',sans-serif; font-size:0.85rem; font-weight:700; cursor:pointer; transition:all 0.2s;
+}
+.cd-confirm-btn:hover { background:rgba(239,68,68,0.28); }
 
-        .overlay-bg {
-            position: absolute; inset: 0; background: rgba(0,0,0,0.85); z-index: 200;
-            display: none; align-items: center; justify-content: center; padding: 20px;
-        }
-        .overlay-bg.active { display: flex; animation: fadeIn 0.3s ease-out forwards; }
-        .modal-content { animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+/* ── NOTIFICATIONS ── */
+#error-banner {
+  position:fixed; top:1rem; left:50%; transform:translateX(-50%) translateY(-90px);
+  z-index:500; background:#200a0a; border:1px solid rgba(239,68,68,0.4);
+  border-radius:0.9rem; padding:0.7rem 1.1rem;
+  display:flex; align-items:center; gap:0.6rem;
+  font-size:0.78rem; color:#fca5a5; max-width:90vw;
+  transition:transform 0.4s cubic-bezier(0.34,1.3,0.64,1);
+  box-shadow:0 8px 30px rgba(0,0,0,0.6); pointer-events:none; white-space:nowrap;
+}
+#error-banner.show { transform:translateX(-50%) translateY(0); }
+#error-banner svg { width:15px; height:15px; flex-shrink:0; }
+#toast {
+  position:fixed; bottom:2.2rem; left:50%; transform:translateX(-50%) translateY(100px);
+  background:linear-gradient(135deg,var(--accent),#a78bfa);
+  color:#fff; padding:0.65rem 1.3rem;
+  border-radius:100px; font-size:0.78rem; font-weight:600;
+  z-index:300; transition:transform 0.38s cubic-bezier(0.34,1.3,0.64,1);
+  box-shadow:0 6px 28px var(--accent-glow); pointer-events:none; white-space:nowrap;
+}
+#toast.show { transform:translateX(-50%) translateY(0); }
+#storage-warn {
+  position:fixed; bottom:5.8rem; right:1.4rem; z-index:50;
+  background:#1c0f00; border:1px solid rgba(251,146,60,0.4);
+  border-radius:0.75rem; padding:0.5rem 0.75rem;
+  font-size:0.68rem; color:#fdba74; display:none;
+  box-shadow:0 4px 16px rgba(0,0,0,0.5); max-width:190px; line-height:1.4;
+}
+#storage-warn.show { display:block; }
 
-        #toast-container {
-            position: absolute; top: 20px; left: 50%; transform: translateX(-50%); z-index: 999;
-            pointer-events: none; display: flex; flex-direction: column; gap: 8px;
-        }
-        .toast {
-            background: rgba(255,255,255,0.95); color: #000; padding: 12px 24px; border-radius: 100px;
-            font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 0.1em;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.5); display: flex; align-items: center; gap: 8px;
-        }
-    </style>
+/* ── FAB ── */
+#fab {
+  position:fixed; bottom:2rem; right:1.4rem; z-index:50;
+  width:56px; height:56px; border-radius:16px;
+  background:linear-gradient(135deg,var(--accent),#a78bfa);
+  border:none; display:flex; align-items:center; justify-content:center;
+  cursor:pointer; box-shadow:0 6px 28px var(--accent-glow);
+  transition:all 0.28s cubic-bezier(0.34,1.3,0.64,1); color:#fff;
+}
+#fab:hover { transform:scale(1.1) rotate(8deg); }
+#fab svg { width:24px; height:24px; }
+</style>
 </head>
 <body>
-
-    <div id="master-container">
-        <div id="toast-container"></div>
-
-        <header class="w-full max-w-md pt-14 pb-4 px-8 flex justify-between items-start z-[100]">
-            <div class="flex flex-col">
-                <h1 class="text-5xl italic-black leading-none text-white uppercase tracking-tighter drop-shadow-lg">VAULT</h1>
-                <p class="text-[9px] font-black tracking-[0.3em] text-indigo-400 uppercase mt-2 opacity-90">Private Identity</p>
-            </div>
-            <div class="flex gap-3">
-                <button onclick="toggleDirectory()" class="w-12 h-12 bg-white/5 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/10 active:scale-90 transition-all">
-                    <i data-lucide="layout-grid" class="w-5 h-5 text-white/80"></i>
-                </button>
-                <button onclick="openForge()" class="w-12 h-12 bg-white text-black rounded-2xl flex items-center justify-center shadow-lg hover:scale-105 active:scale-90 transition-all">
-                    <i data-lucide="plus" class="w-6 h-6"></i>
-                </button>
-            </div>
-        </header>
-
-        <main id="card-container" class="relative w-full max-w-[360px] flex-1 mt-4 flex items-center justify-center perspective-[1000px]">
-            <!-- Cards -->
-        </main>
-
-        <footer class="w-full py-8 flex flex-col items-center gap-4 z-[100]">
-            <div id="dots-container" class="flex gap-2"></div>
-        </footer>
-
-        <div id="forge-overlay" class="overlay-bg items-end pb-6"></div>
-        <div id="directory-overlay" class="overlay-bg flex-col !justify-start pt-24 pb-0"></div>
+<div id="app">
+  <header id="header">
+    <div id="header-logo">
+      <div id="header-logo-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+          <rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3M17 14h4M14 17v4"/>
+        </svg>
+      </div>
+      <div>
+        <div class="logo-text">VAULT</div>
+        <div class="logo-sub">Identity QR</div>
+      </div>
     </div>
+    <div id="header-actions">
+      <button class="icon-btn" title="Open Vault Directory" onclick="openDir()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/>
+          <line x1="8" y1="18" x2="21" y2="18"/>
+          <line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/>
+          <line x1="3" y1="18" x2="3.01" y2="18"/>
+        </svg>
+      </button>
+    </div>
+  </header>
 
-    <script>
-        const FALLBACK_ICON = 'https://cdn-icons-png.flaticon.com/512/1067/1067562.png';
-        const PLATFORMS = [
-            { id: 'Instagram', color: '#E4405F', logo: 'https://cdn-icons-png.flaticon.com/512/174/174855.png' },
-            { id: 'Twitter', color: '#1DA1F2', logo: 'https://cdn-icons-png.flaticon.com/512/733/733579.png' },
-            { id: 'GitHub', color: '#181717', logo: 'https://cdn-icons-png.flaticon.com/512/25/25231.png', forceWhite: true },
-            { id: 'TikTok', color: '#000000', logo: 'https://cdn-icons-png.flaticon.com/512/3046/3046121.png', forceWhite: true },
-            { id: 'LinkedIn', color: '#0077B5', logo: 'https://cdn-icons-png.flaticon.com/512/3536/3536505.png' },
-            { id: 'YouTube', color: '#FF0000', logo: 'https://cdn-icons-png.flaticon.com/512/1384/1384060.png' },
-            { id: 'Snapchat', color: '#FFFC00', logo: 'https://cdn-icons-png.flaticon.com/512/174/174870.png' },
-            { id: 'Discord', color: '#5865F2', logo: 'https://cdn-icons-png.flaticon.com/512/3670/3670157.png' },
-            { id: 'Twitch', color: '#9146FF', logo: 'https://cdn-icons-png.flaticon.com/512/5968/5968819.png' },
-            // Replaced generic icon.png with a reliable global website icon
-            { id: 'Website', color: '#4F46E5', logo: 'https://cdn-icons-png.flaticon.com/512/1006/1006771.png', forceWhite: true },
-            { id: 'Custom', color: '#222222', logo: 'https://cdn-icons-png.flaticon.com/512/1828/1828817.png', forceWhite: true }
-        ];
+  <div id="stage">
+    <div id="empty-state">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4">
+        <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+        <rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3M17 14h4M14 17v4"/>
+      </svg>
+      <p>Your vault is empty.<br>Tap <strong>+</strong> to forge your first identity card.</p>
+    </div>
+    <div id="swipe-hint">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+      <span>Swipe down for vault</span>
+    </div>
+  </div>
+  <div id="nav-dots"></div>
+</div>
 
-        let cards = JSON.parse(localStorage.getItem('qr-vault-production') || '[]');
-        let globalScale = parseFloat(localStorage.getItem('qr-vault-scale') || '1.0');
-        let currentIndex = 0;
-        let tempCard = { platformId: 'Instagram', handle: '', url: '', bgColor: '#E4405F', customImage: null, qrLogo: null };
+<!-- FAB -->
+<button id="fab" onclick="openForge()" title="Create new card">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+  </svg>
+</button>
 
-        function vibrate(ms = 10) { if (navigator.vibrate) navigator.vibrate(ms); }
+<div id="storage-warn">⚠ Storage nearly full — delete cards or use smaller images.</div>
 
-        function showToast(message, icon = 'check-circle') {
-            const container = document.getElementById('toast-container');
-            const toast = document.createElement('div');
-            toast.className = 'toast';
-            toast.innerHTML = `<i data-lucide="${icon}" class="w-4 h-4 text-indigo-600"></i> ${message}`;
-            container.appendChild(toast);
-            lucide.createIcons();
-            setTimeout(() => {
-                toast.style.transition = 'opacity 0.3s, transform 0.3s';
-                toast.style.opacity = '0';
-                setTimeout(() => toast.remove(), 300);
-            }, 2500);
+<!-- DIRECTORY OVERLAY -->
+<div class="overlay" id="dir-overlay">
+  <div class="overlay-backdrop"></div>
+  <div class="overlay-inner">
+    <div class="overlay-header">
+      <div class="overlay-title">Your Vault <span id="dir-count" style="font-size:0.65rem;color:var(--text-dim);font-family:'Space Grotesk',sans-serif;font-weight:400;letter-spacing:0.05em;margin-left:0.3rem"></span></div>
+      <button class="icon-btn" onclick="closeDir()" title="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+    <div id="dir-list"></div>
+    <div class="scale-section">
+      <div class="scale-label">
+        <span>UI Scale</span>
+        <strong id="scale-val">1.0×</strong>
+      </div>
+      <input type="range" id="scale-slider" min="70" max="130" value="100" oninput="onScale(this)">
+    </div>
+  </div>
+</div>
+
+<!-- FORGE OVERLAY -->
+<div class="overlay" id="forge-overlay">
+  <div class="overlay-backdrop" onclick="closeForge()"></div>
+  <div class="overlay-inner">
+    <div class="overlay-header">
+      <div class="overlay-title">Forge Card</div>
+      <button class="icon-btn" onclick="closeForge()" title="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+    <div class="overlay-content">
+      <div class="field-group">
+        <label class="field-label">Display Name *</label>
+        <input class="field-input" id="f-name" type="text" placeholder="Your Name" maxlength="50" autocomplete="off">
+        <span class="field-error" id="err-name">Please enter a display name.</span>
+      </div>
+      <div class="field-group">
+        <label class="field-label">Handle / Username</label>
+        <input class="field-input" id="f-handle" type="text" placeholder="@username" maxlength="60" autocomplete="off">
+      </div>
+      <div class="field-group">
+        <label class="field-label">Platform</label>
+        <select class="field-input" id="f-platform">
+          <option>Instagram</option><option>Twitter/X</option><option>LinkedIn</option>
+          <option>GitHub</option><option>YouTube</option><option>TikTok</option>
+          <option>Twitch</option><option>Discord</option><option>WhatsApp</option>
+          <option>Telegram</option><option>Website</option><option>Custom</option>
+        </select>
+      </div>
+      <div class="field-group">
+        <label class="field-label">URL (encoded in QR) *</label>
+        <input class="field-input" id="f-url" type="text" placeholder="https://..." maxlength="500" autocomplete="off">
+        <span class="field-error" id="err-url">Enter a valid URL starting with https://</span>
+      </div>
+      <div class="field-group">
+        <label class="field-label">Card Background <span class="field-opt">(optional)</span></label>
+        <label class="upload-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <rect x="3" y="3" width="18" height="18" rx="2"/>
+            <circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
+          </svg>
+          <span id="bg-txt">Upload background image</span>
+          <div class="upload-thumb" id="bg-thumb"></div>
+          <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" id="f-bg">
+        </label>
+        <span class="field-error" id="err-bg"></span>
+      </div>
+      <div class="field-group">
+        <label class="field-label">QR Center Logo <span class="field-opt">(optional)</span></label>
+        <label class="upload-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <circle cx="12" cy="12" r="10"/>
+            <circle cx="12" cy="10" r="3"/>
+            <path d="M7 20.662V19a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v1.662"/>
+          </svg>
+          <span id="logo-txt">Upload logo / avatar</span>
+          <div class="upload-thumb" id="logo-thumb"></div>
+          <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" id="f-logo">
+        </label>
+        <span class="field-error" id="err-logo"></span>
+      </div>
+      <button class="forge-submit" id="forge-btn">
+        <span id="forge-lbl">⚡ Forge Card</span>
+        <div class="spinner" id="forge-spin" style="display:none"></div>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM DIALOG -->
+<div id="confirm-dialog">
+  <div class="cd-backdrop"></div>
+  <div class="cd-box">
+    <div class="cd-title" id="cd-title">Delete Card?</div>
+    <div class="cd-msg" id="cd-msg">This cannot be undone.</div>
+    <div class="cd-actions">
+      <button class="cd-cancel" onclick="cdResolve(false)">Cancel</button>
+      <button class="cd-confirm-btn" onclick="cdResolve(true)">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- NOTIFICATIONS -->
+<div id="error-banner">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+    <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+  </svg>
+  <span id="error-msg"></span>
+</div>
+<div id="toast"></div>
+
+<script>
+/* ════════════════════════════════════════════════
+   CONSTANTS
+   ════════════════════════════════════════════════ */
+const CARD_W    = 320;
+const CARD_H    = 460;
+const QR_BASE   = 152;
+const STORE_KEY = 'qrv3_cards';
+const SCALE_KEY = 'qrv3_scale';
+const MAX_B64   = 1.6 * 1024 * 1024; // bytes (approx)
+
+/* ════════════════════════════════════════════════
+   STATE
+   ════════════════════════════════════════════════ */
+let cards      = [];
+let currentIdx = 0;
+let scale      = 1;
+let bgB64      = null;
+let logoB64    = null;
+let isForging  = false;
+let renderBusy = false;
+
+/* ════════════════════════════════════════════════
+   UTILITIES
+   ════════════════════════════════════════════════ */
+const esc = s => String(s)
+  .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+  .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+function isUrl(s) {
+  try { const u = new URL(s); return u.protocol==='http:'||u.protocol==='https:'; }
+  catch { return false; }
+}
+
+/* ════════════════════════════════════════════════
+   NOTIFICATIONS
+   ════════════════════════════════════════════════ */
+let _toastT = null;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(_toastT);
+  _toastT = setTimeout(() => el.classList.remove('show'), 2700);
+}
+
+let _errT = null;
+function showErr(msg) {
+  document.getElementById('error-msg').textContent = msg;
+  const b = document.getElementById('error-banner');
+  b.classList.add('show');
+  clearTimeout(_errT);
+  _errT = setTimeout(() => b.classList.remove('show'), 4500);
+}
+
+/* ════════════════════════════════════════════════
+   CONFIRM DIALOG
+   ════════════════════════════════════════════════ */
+let _cdRes = null;
+function confirm2(title, msg) {
+  document.getElementById('cd-title').textContent = title;
+  document.getElementById('cd-msg').textContent   = msg;
+  document.getElementById('confirm-dialog').classList.add('open');
+  return new Promise(r => { _cdRes = r; });
+}
+function cdResolve(v) {
+  document.getElementById('confirm-dialog').classList.remove('open');
+  if (_cdRes) { _cdRes(v); _cdRes = null; }
+}
+
+/* ════════════════════════════════════════════════
+   STORAGE
+   ════════════════════════════════════════════════ */
+function save() {
+  try {
+    localStorage.setItem(STORE_KEY, JSON.stringify(cards));
+    checkQuota();
+    return true;
+  } catch(e) {
+    const isQuota = e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED';
+    showErr(isQuota
+      ? 'Storage full — delete cards or use smaller images before saving.'
+      : 'Save failed: ' + e.message);
+    return false;
+  }
+}
+
+function load() {
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) cards = parsed;
+    }
+  } catch(e) {
+    console.warn('QRVault: corrupted storage, starting fresh.', e);
+    cards = [];
+  }
+  try {
+    const sv = parseFloat(localStorage.getItem(SCALE_KEY));
+    if (sv >= 0.7 && sv <= 1.3) {
+      scale = sv;
+      document.documentElement.style.setProperty('--scale', scale);
+      const sl = document.getElementById('scale-slider');
+      if (sl) sl.value = Math.round(scale * 100);
+      document.getElementById('scale-val').textContent = scale.toFixed(1) + '×';
+    }
+  } catch {}
+}
+
+function checkQuota() {
+  try {
+    let used = 0;
+    for (const k in localStorage) {
+      if (Object.prototype.hasOwnProperty.call(localStorage, k))
+        used += (localStorage[k].length || 0) * 2;
+    }
+    const w = document.getElementById('storage-warn');
+    used > 4 * 1024 * 1024 ? w.classList.add('show') : w.classList.remove('show');
+  } catch {}
+}
+
+/* ════════════════════════════════════════════════
+   IMAGE PROCESSING — canvas center-crop
+   ════════════════════════════════════════════════ */
+function cropImage(file, tw, th, quality = 0.80) {
+  return new Promise((resolve, reject) => {
+    if (!file || !file.type.startsWith('image/'))
+      return reject(new Error('Selected file is not a supported image type.'));
+    if (file.size > 25 * 1024 * 1024)
+      return reject(new Error('File too large — max 25 MB.'));
+
+    const objUrl = URL.createObjectURL(file);
+    const img = new Image();
+
+    img.onload = () => {
+      URL.revokeObjectURL(objUrl);
+      try {
+        if (!img.naturalWidth || !img.naturalHeight)
+          return reject(new Error('Image has zero dimensions.'));
+
+        const canvas = document.createElement('canvas');
+        canvas.width = tw; canvas.height = th;
+        const ctx = canvas.getContext('2d');
+
+        const srcAR = img.naturalWidth / img.naturalHeight;
+        const dstAR = tw / th;
+        let sx, sy, sw, sh;
+        if (srcAR > dstAR) {
+          sh = img.naturalHeight; sw = sh * dstAR;
+          sx = (img.naturalWidth - sw) / 2; sy = 0;
+        } else {
+          sw = img.naturalWidth; sh = sw / dstAR;
+          sx = 0; sy = (img.naturalHeight - sh) / 2;
         }
+        ctx.drawImage(img, sx, sy, sw, sh, 0, 0, tw, th);
 
-        async function processAndCropImage(dataUrl, targetWidth, targetHeight) {
-            return new Promise((resolve) => {
-                const img = new Image();
-                img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    canvas.width = targetWidth;
-                    canvas.height = targetHeight;
-                    const ctx = canvas.getContext('2d');
-                    const targetRatio = targetWidth / targetHeight;
-                    const imgRatio = img.width / img.height;
-                    let sw, sh, sx, sy;
-                    if (imgRatio > targetRatio) {
-                        sh = img.height; sw = img.height * targetRatio;
-                        sx = (img.width - sw) / 2; sy = 0;
-                    } else {
-                        sw = img.width; sh = img.width / targetRatio;
-                        sx = 0; sy = (img.height - sh) / 2;
-                    }
-                    ctx.drawImage(img, sx, sy, sw, sh, 0, 0, targetWidth, targetHeight);
-                    resolve(canvas.toDataURL('image/jpeg', 0.85));
-                };
-                img.src = dataUrl;
-            });
-        }
+        const dataUrl = canvas.toDataURL('image/jpeg', quality);
+        // Rough byte estimate: base64 len * 0.75
+        if (dataUrl.length * 0.75 > MAX_B64)
+          return reject(new Error('Processed image is too large. Try a smaller or lower-res file.'));
 
-        function updateAppScale(val) {
-            globalScale = parseFloat(val);
-            localStorage.setItem('qr-vault-scale', globalScale);
-            document.documentElement.style.setProperty('--app-scale', globalScale);
-            if (document.getElementById('scale-val-display')) 
-                document.getElementById('scale-val-display').innerText = globalScale.toFixed(2) + 'x';
-        }
+        resolve(dataUrl);
+      } catch(err) {
+        reject(new Error('Image processing failed: ' + err.message));
+      }
+    };
 
-        function render() {
-            updateAppScale(globalScale);
-            const container = document.getElementById('card-container');
-            const dots = document.getElementById('dots-container');
-            container.innerHTML = ''; dots.innerHTML = '';
+    img.onerror = () => {
+      URL.revokeObjectURL(objUrl);
+      reject(new Error('Could not decode image. File may be corrupted.'));
+    };
 
-            if (cards.length === 0) {
-                container.innerHTML = `<p class="opacity-40 text-[10px] font-black uppercase tracking-[0.5em]">Vault Empty</p>`;
-            } else {
-                cards.forEach((card, i) => {
-                    const offset = i - currentIndex;
-                    const cardEl = document.createElement('div');
-                    cardEl.id = `card-${i}`;
-                    cardEl.className = "card-stack-item absolute top-0 w-full max-w-[340px] h-[480px] rounded-[3rem] overflow-hidden border border-white/10";
-                    
-                    const xPos = offset * 380;
-                    cardEl.style.cssText = `
-                        transform: translate3d(${xPos}px, 0, 0) scale(${i === currentIndex ? 1 : 0.88});
-                        z-index: ${100 - Math.abs(offset)};
-                        opacity: ${i === currentIndex ? 1 : 0};
-                        background-color: ${card.bgColor};
-                        box-shadow: ${i === currentIndex ? '0 30px 60px rgba(0,0,0,0.8)' : 'none'};
-                        ${card.customImage ? `background-image: url(${card.customImage}); background-size: cover; background-position: center;` : ''}
-                        pointer-events: ${i === currentIndex ? 'auto' : 'none'};
-                    `;
+    img.src = objUrl;
+  });
+}
 
-                    const p = PLATFORMS.find(p => p.id === card.platformId) || PLATFORMS[0];
-                    cardEl.innerHTML = `
-                        ${card.customImage ? '<div class="absolute inset-0 bg-black/50 backdrop-blur-[1px]"></div>' : ''}
-                        <div class="relative z-10 h-full flex flex-col p-8 pt-12">
-                            <div class="flex justify-between items-start">
-                                <div class="flex flex-col text-white">
-                                    <h2 class="text-4xl italic-black uppercase leading-none tracking-tighter">${card.platformId}</h2>
-                                    <div class="w-10 h-1 bg-white/30 rounded-full mt-4"></div>
-                                </div>
-                                <div class="w-14 h-14 bg-white/10 backdrop-blur-xl rounded-2xl flex items-center justify-center border border-white/20">
-                                    <img src="${p.logo}" onerror="this.src='${FALLBACK_ICON}'" class="w-8 h-8 object-contain ${p.forceWhite ? 'force-white' : ''}">
-                                </div>
-                            </div>
-                            <div class="flex-1 flex flex-col items-center justify-center">
-                                <div class="p-4 bg-white/10 backdrop-blur-2xl rounded-[2rem] border border-white/20 shadow-2xl" id="qr-${i}"></div>
-                                <p class="mt-8 text-[11px] font-black tracking-[0.3em] text-white uppercase bg-black/30 px-6 py-2 rounded-full border border-white/10">${card.handle}</p>
-                            </div>
-                        </div>
-                    `;
-                    container.appendChild(cardEl);
-                    
-                    if (Math.abs(offset) <= 1) {
-                        new QRCodeStyling({
-                            width: 220, height: 220, data: card.url,
-                            dotsOptions: { color: "#fff", type: "rounded" },
-                            backgroundOptions: { color: "transparent" },
-                            cornersSquareOptions: { type: "extra-rounded", color: "#fff" },
-                            image: card.qrLogo || p.logo,
-                            imageOptions: { crossOrigin: "anonymous", margin: 8, imageSize: 0.35 }
-                        }).append(document.getElementById(`qr-${i}`));
-                    }
+async function handleUpload(fileInputId, thumbId, txtId, errId, tw, th, quality, onSuccess) {
+  const input = document.getElementById(fileInputId);
+  const file  = input.files[0];
+  if (!file) return;
 
-                    const dot = document.createElement('div');
-                    dot.className = `h-1.5 rounded-full transition-all duration-500 ${i === currentIndex ? 'w-8 bg-indigo-500' : 'w-2 bg-white/20'}`;
-                    dots.appendChild(dot);
-                });
-            }
-            lucide.createIcons();
-            initDrag();
-        }
+  const errEl  = document.getElementById(errId);
+  const txtEl  = document.getElementById(txtId);
+  const thumb  = document.getElementById(thumbId);
 
-        let isDragging = false, dragStartX = 0, currentDragX = 0;
-        function initDrag() {
-            const container = document.getElementById('card-container');
-            container.ontouchstart = e => { if(cards.length < 2) return; dragStartX = e.touches[0].clientX; isDragging = true; };
-            container.ontouchmove = e => {
-                if (!isDragging) return;
-                currentDragX = e.touches[0].clientX - dragStartX;
-                const activeCard = document.getElementById(`card-${currentIndex}`);
-                if (activeCard) {
-                    const damp = (currentIndex === 0 && currentDragX > 0) || (currentIndex === cards.length-1 && currentDragX < 0) ? 0.3 : 1;
-                    activeCard.style.transform = `translate3d(${currentDragX * damp}px, 0, 0) rotate(${currentDragX * 0.05}deg)`;
-                }
-            };
-            container.ontouchend = () => {
-                if (!isDragging) return; isDragging = false;
-                const threshold = window.innerWidth * 0.2;
-                if (currentDragX < -threshold && currentIndex < cards.length - 1) currentIndex++;
-                else if (currentDragX > threshold && currentIndex > 0) currentIndex--;
-                currentDragX = 0; render();
-            };
-        }
+  errEl.textContent = ''; errEl.classList.remove('show');
+  txtEl.textContent = 'Processing…';
 
-        function openOverlay(id) { document.getElementById(id).classList.add('active'); }
-        function closeOverlay(id) { document.getElementById(id).classList.remove('active'); }
+  try {
+    const b64 = await cropImage(file, tw, th, quality);
+    thumb.style.backgroundImage = `url(${b64})`;
+    thumb.style.display = 'block';
+    txtEl.textContent = '✓ Image set';
+    onSuccess(b64);
+  } catch(err) {
+    txtEl.textContent = tw > 200 ? 'Upload background image' : 'Upload logo / avatar';
+    thumb.style.display = 'none';
+    errEl.textContent = err.message;
+    errEl.classList.add('show');
+    onSuccess(null);
+    input.value = ''; // clear bad file
+  }
+}
 
-        function openForge() {
-            tempCard = { platformId: 'Instagram', handle: '', url: '', bgColor: '#E4405F', customImage: null, qrLogo: null };
-            renderForge();
-            openOverlay('forge-overlay');
-        }
+/* ════════════════════════════════════════════════
+   QR CODE GENERATION — poll-based, race-safe
+   ════════════════════════════════════════════════ */
+let qrReady = false;
 
-        function renderForge() {
-            const overlay = document.getElementById('forge-overlay');
-            overlay.innerHTML = `
-                <div class="modal-content w-full max-w-[380px] bg-[#0c0c0c] rounded-[3rem] p-8 pb-10 border border-white/10 shadow-2xl flex flex-col relative">
-                    <div class="flex justify-between items-center mb-6">
-                        <h3 class="text-2xl italic-black uppercase text-white tracking-tighter">FORGE</h3>
-                        <button onclick="closeOverlay('forge-overlay')" class="w-10 h-10 bg-white/5 rounded-xl flex items-center justify-center text-white/50 border border-white/5"><i data-lucide="x"></i></button>
-                    </div>
-                    <div class="space-y-5">
-                        <div class="platform-grid no-scrollbar">
-                            ${PLATFORMS.map(p => `
-                                <button onclick="selectPlatform('${p.id}')" class="platform-btn h-14 rounded-2xl flex items-center justify-center ${tempCard.platformId === p.id ? 'bg-white shadow-xl scale-105' : 'bg-white/5 border border-white/5'} transition-all">
-                                    <img src="${p.logo}" onerror="this.src='${FALLBACK_ICON}'" class="${(p.forceWhite && tempCard.platformId !== p.id) ? 'force-white opacity-60' : ''}">
-                                </button>`).join('')}
-                        </div>
-                        <input type="text" placeholder="@handle" value="${tempCard.handle}" oninput="tempCard.handle = this.value" class="glass-input w-full rounded-2xl px-5 py-4 text-white font-bold outline-none text-sm">
-                        <input type="url" placeholder="Profile Link" value="${tempCard.url}" oninput="tempCard.url = this.value" class="glass-input w-full rounded-2xl px-5 py-4 text-white font-bold outline-none text-sm">
-                        <div class="grid grid-cols-2 gap-3">
-                            <label class="h-24 glass-input border-dashed rounded-2xl flex flex-col items-center justify-center cursor-pointer overflow-hidden relative">
-                                <input type="file" accept="image/*" class="hidden" onchange="handleFile(this, 'customImage', 340, 480)">
-                                ${tempCard.customImage ? `<img src="${tempCard.customImage}" class="absolute inset-0 w-full h-full object-cover">` : `<span class="text-[8px] font-black opacity-40 uppercase">Card Bg</span>`}
-                            </label>
-                            <label class="h-24 glass-input border-dashed rounded-2xl flex flex-col items-center justify-center cursor-pointer overflow-hidden relative">
-                                <input type="file" accept="image/*" class="hidden" onchange="handleFile(this, 'qrLogo', 200, 200)">
-                                ${tempCard.qrLogo ? `<img src="${tempCard.qrLogo}" class="absolute inset-0 w-full h-full object-cover">` : `<span class="text-[8px] font-black opacity-40 uppercase">QR Logo</span>`}
-                            </label>
-                        </div>
-                        <button onclick="saveCard()" class="w-full bg-indigo-600 text-white font-black py-4 rounded-2xl text-xs tracking-widest uppercase shadow-xl active:scale-95 transition-all">Forge Identity</button>
-                    </div>
-                </div>
-            `;
-            lucide.createIcons();
-        }
+function ensureQRLib() {
+  return new Promise(resolve => {
+    if (typeof QRCode !== 'undefined') { qrReady = true; resolve(true); return; }
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
+    s.onload  = () => { qrReady = true; resolve(true); };
+    s.onerror = () => resolve(false);
+    document.head.appendChild(s);
+  });
+}
 
-        async function handleFile(input, target, w, h) {
-            const file = input.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = async (e) => {
-                const cropped = await processAndCropImage(e.target.result, w, h);
-                tempCard[target] = cropped;
-                renderForge();
-            };
-            reader.readAsDataURL(file);
-        }
+function genQR(url, size) {
+  return new Promise(resolve => {
+    if (!qrReady || typeof QRCode === 'undefined') return resolve(null);
 
-        function selectPlatform(id) {
-            const p = PLATFORMS.find(x => x.id === id);
-            tempCard.platformId = id; tempCard.bgColor = p.color;
-            renderForge();
-        }
+    const host = document.createElement('div');
+    host.style.cssText = 'position:absolute;left:-99999px;top:-99999px;';
+    document.body.appendChild(host);
 
-        function saveCard() {
-            if (!tempCard.handle || !tempCard.url) return showToast("Enter handle & link", "alert-circle");
-            cards.unshift({ ...tempCard, id: Date.now().toString() });
-            localStorage.setItem('qr-vault-production', JSON.stringify(cards));
-            currentIndex = 0; closeOverlay('forge-overlay');
-            showToast("Vault Updated"); render();
-        }
+    let done = false;
+    const finish = src => {
+      if (done) return; done = true;
+      try { document.body.removeChild(host); } catch {}
+      resolve(src || null);
+    };
 
-        function toggleDirectory() {
-            const overlay = document.getElementById('directory-overlay');
-            if (overlay.classList.contains('active')) return closeOverlay('directory-overlay');
-            overlay.innerHTML = `
-                <div class="modal-content w-full max-w-[380px] flex flex-col h-full max-h-[85vh]">
-                    <div class="flex justify-between items-center mb-8 px-2 shrink-0">
-                        <h2 class="text-3xl italic-black uppercase text-white tracking-tighter leading-none">DIRECTORY</h2>
-                        <button onclick="closeOverlay('directory-overlay')" class="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center"><i data-lucide="x"></i></button>
-                    </div>
-                    <div class="bg-white/5 border border-white/10 rounded-3xl p-6 mb-6 flex flex-col gap-4 shrink-0">
-                        <div class="flex justify-between text-[10px] font-black uppercase tracking-widest text-indigo-400">
-                            <span>Global Scaling</span>
-                            <span id="scale-val-display">${globalScale.toFixed(2)}x</span>
-                        </div>
-                        <input type="range" min="0.7" max="1.3" step="0.05" value="${globalScale}" oninput="updateAppScale(this.value)">
-                    </div>
-                    <div class="space-y-3 overflow-y-auto no-scrollbar flex-1 pb-10">
-                        ${cards.map(c => `
-                            <div class="bg-white/5 p-3 rounded-2xl flex items-center justify-between border border-white/5">
-                                <div class="flex items-center gap-4">
-                                    <div class="w-12 h-12 bg-black/40 rounded-xl overflow-hidden flex items-center justify-center border border-white/10">
-                                        <img src="${c.customImage || (PLATFORMS.find(p => p.id === c.platformId)?.logo)}" onerror="this.src='${FALLBACK_ICON}'" class="w-full h-full object-cover">
-                                    </div>
-                                    <div class="flex flex-col">
-                                        <span class="font-black text-[8px] text-indigo-400 uppercase tracking-tighter">${c.platformId}</span>
-                                        <span class="font-bold text-sm text-white/90 truncate max-w-[120px]">${c.handle}</span>
-                                    </div>
-                                </div>
-                                <button onclick="deleteCard('${c.id}')" class="w-10 h-10 bg-red-500/10 text-red-500 rounded-xl flex items-center justify-center"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
-            `;
-            lucide.createIcons(); openOverlay('directory-overlay');
-        }
+    try {
+      new QRCode(host, {
+        text: url || 'https://example.com',
+        width: size, height: size,
+        colorDark:  '#1a1a2e',
+        colorLight: '#f6f6ff',
+        correctLevel: QRCode.CorrectLevel.H
+      });
+    } catch(e) {
+      return finish(null);
+    }
 
-        function deleteCard(id) {
-            cards = cards.filter(c => c.id !== id);
-            localStorage.setItem('qr-vault-production', JSON.stringify(cards));
-            currentIndex = 0; render(); toggleDirectory();
-        }
+    // Poll for canvas render (QRCode lib uses internal setTimeout)
+    let ticks = 0;
+    const poll = setInterval(() => {
+      ticks++;
+      const cvs = host.querySelector('canvas');
+      const img = host.querySelector('img');
+      let src = null;
+      if (cvs && cvs.width > 0) {
+        try { src = cvs.toDataURL('image/png'); } catch {}
+      } else if (img && img.naturalWidth > 0) {
+        src = img.src;
+      }
+      if (src || ticks > 60) { clearInterval(poll); finish(src); }
+    }, 50);
+  });
+}
 
-        window.onload = render;
-    </script>
+/* ════════════════════════════════════════════════
+   CARD ELEMENT BUILDER
+   ════════════════════════════════════════════════ */
+async function buildCard(card, idx) {
+  const cw    = CARD_W  * scale;
+  const ch    = CARD_H  * scale;
+  const qrSz  = Math.round(QR_BASE * scale);
+  const pad   = Math.round(20  * scale);
+  const fr    = Math.round(16  * scale);
+  const qrPad = Math.round(11  * scale);
+  const gap   = Math.round(12  * scale);
+  const nameFs   = Math.max(14, Math.round(22 * scale));
+  const handleFs = Math.max(9,  Math.round(12 * scale));
+  const badgeFs  = Math.max(7,  Math.round(9  * scale));
+
+  const qrSrc = await genQR(card.url, qrSz);
+
+  let qrHtml;
+  if (qrSrc) {
+    const logoHtml = card.logo
+      ? `<div class="qr-logo-overlay" style="width:${Math.round(qrSz*.22)}px;height:${Math.round(qrSz*.22)}px">
+           <img src="${card.logo}" alt="">
+         </div>`
+      : '';
+    qrHtml = `<div class="qr-frame" style="border-radius:${fr}px;padding:${qrPad}px">
+      <img src="${qrSrc}" width="${qrSz}" height="${qrSz}"
+           style="border-radius:${Math.round(fr*.4)}px;display:block" alt="QR code">
+      ${logoHtml}
+    </div>`;
+  } else {
+    // QR unavailable fallback
+    qrHtml = `<div class="qr-frame qr-placeholder" style="border-radius:${fr}px;width:${qrSz+qrPad*2}px;height:${qrSz+qrPad*2}px">
+      <svg width="${qrSz*.45}" height="${qrSz*.45}" viewBox="0 0 24 24" fill="none" stroke="#8888bb" stroke-width="1.5" opacity=".5">
+        <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+        <rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3M17 14h4M14 17v4"/>
+      </svg>
+    </div>`;
+  }
+
+  const handleHtml = card.handle
+    ? `<div class="card-handle" style="font-size:${handleFs}px">${esc(card.handle)}</div>`
+    : '';
+
+  const wrap = document.createElement('div');
+  wrap.className   = 'card-wrapper';
+  wrap.dataset.idx = idx;
+  wrap.style.width  = cw + 'px';
+  wrap.style.height = ch + 'px';
+
+  wrap.innerHTML = `
+    <div class="id-card">
+      <div class="card-bg" ${card.bg ? `style="background-image:url(${card.bg})"` : ''}></div>
+      <div class="card-shimmer"></div>
+      <div class="card-body" style="padding:${pad}px">
+        <div class="card-badge" style="padding:${Math.round(3*scale)}px ${Math.round(10*scale)}px;font-size:${badgeFs}px">${esc(card.platform||'Identity')}</div>
+        <div class="card-qr-zone" style="gap:${gap}px;padding-bottom:${Math.round(4*scale)}px">
+          ${qrHtml}
+          <div class="card-info">
+            <div class="card-name" style="font-size:${nameFs}px">${esc(card.name||'Identity')}</div>
+            ${handleHtml}
+          </div>
+        </div>
+      </div>
+    </div>`;
+
+  return wrap;
+}
+
+/* ════════════════════════════════════════════════
+   RENDER PIPELINE
+   ════════════════════════════════════════════════ */
+async function renderCards(jumpTo) {
+  if (renderBusy) return;
+  renderBusy = true;
+
+  if (jumpTo !== undefined) currentIdx = jumpTo;
+
+  const stage = document.getElementById('stage');
+  // Remove only card wrappers, keep #empty-state and #swipe-hint
+  stage.querySelectorAll('.card-wrapper').forEach(el => el.remove());
+
+  const empty = document.getElementById('empty-state');
+  const hint  = document.getElementById('swipe-hint');
+
+  if (cards.length === 0) {
+    empty.classList.add('visible'); hint.classList.remove('visible');
+    renderDots(); renderBusy = false; return;
+  }
+
+  empty.classList.remove('visible'); hint.classList.add('visible');
+  currentIdx = Math.max(0, Math.min(currentIdx, cards.length - 1));
+
+  for (let i = 0; i < cards.length; i++) {
+    try {
+      const el = await buildCard(cards[i], i);
+      stage.appendChild(el);
+    } catch(e) {
+      console.error('buildCard failed for index', i, e);
+    }
+  }
+
+  positionCards(false);
+  bindGestures();
+  renderDots();
+  renderBusy = false;
+}
+
+/* ════════════════════════════════════════════════
+   POSITIONING — no async, pure layout
+   ════════════════════════════════════════════════ */
+function positionCards(animate) {
+  const wrappers = Array.from(document.querySelectorAll('.card-wrapper'));
+  if (!wrappers.length) return;
+
+  const cw   = CARD_W * scale;
+  const ch   = CARD_H * scale;
+  const step = cw * 0.86;
+  const tr   = animate ? 'transform 0.44s cubic-bezier(0.34,1.1,0.64,1),opacity 0.3s' : 'none';
+
+  wrappers.forEach((w, i) => {
+    const off = i - currentIdx;
+    w.style.transition = tr;
+    w.style.transform  = `translateX(${off*step}px) translateZ(${-Math.abs(off)*90}px) rotateY(${off*9}deg) scale(${Math.max(0.76, 1-Math.abs(off)*0.13)})`;
+    w.style.opacity    = Math.max(0.28, 1 - Math.abs(off) * 0.32);
+    w.style.zIndex     = 100 - Math.abs(off);
+    // Keep size synced so scale slider works without full re-render
+    w.style.width  = cw + 'px';
+    w.style.height = ch + 'px';
+  });
+}
+
+/* ════════════════════════════════════════════════
+   GESTURE ENGINE — pointer events + capture
+   ════════════════════════════════════════════════ */
+const drag = { on:false, x0:0, y0:0, dx:0, dy:0, dir:null, pid:null };
+
+function bindGestures() {
+  const stage = document.getElementById('stage');
+  // Clone-replace to strip old listeners cleanly
+  const fresh = stage.cloneNode(false);
+  // Move children back (clone is shallow)
+  while (stage.firstChild) fresh.appendChild(stage.firstChild);
+  stage.parentNode.replaceChild(fresh, stage);
+  fresh.id = 'stage';
+  fresh.addEventListener('pointerdown', onDown, { passive: false });
+}
+
+function onDown(e) {
+  if (cards.length === 0 || drag.on) return;
+  e.preventDefault();
+  drag.on = true; drag.pid = e.pointerId;
+  drag.x0 = e.clientX; drag.y0 = e.clientY;
+  drag.dx = 0; drag.dy = 0; drag.dir = null;
+  try { e.currentTarget.setPointerCapture(e.pointerId); } catch {}
+  document.querySelectorAll('.card-wrapper').forEach(w => w.classList.add('is-dragging'));
+  window.addEventListener('pointermove', onMove, { passive: false });
+  window.addEventListener('pointerup',     onUp);
+  window.addEventListener('pointercancel', onUp);
+}
+
+function onMove(e) {
+  if (!drag.on || e.pointerId !== drag.pid) return;
+  e.preventDefault();
+  drag.dx = e.clientX - drag.x0;
+  drag.dy = e.clientY - drag.y0;
+
+  if (!drag.dir) {
+    if (Math.abs(drag.dx) > 7 || Math.abs(drag.dy) > 7)
+      drag.dir = Math.abs(drag.dx) >= Math.abs(drag.dy) ? 'h' : 'v';
+    if (!drag.dir) return;
+  }
+
+  const cw   = CARD_W * scale;
+  const step = cw * 0.86;
+
+  if (drag.dir === 'h') {
+    document.querySelectorAll('.card-wrapper').forEach((w, i) => {
+      const off  = i - currentIdx;
+      const x    = off * step + drag.dx;
+      const tilt = (drag.dx / window.innerWidth) * -18 + off * 9;
+      const s    = Math.max(0.76, 1 - Math.abs(off) * 0.13);
+      w.style.transition = 'none';
+      w.style.transform  = `translateX(${x}px) translateZ(${-Math.abs(off)*90}px) rotateY(${tilt}deg) scale(${s})`;
+    });
+  } else if (drag.dir === 'v' && drag.dy > 0) {
+    const active = document.querySelector(`.card-wrapper[data-idx="${currentIdx}"]`);
+    if (active) {
+      const pull = Math.min(drag.dy, 90) * 0.38;
+      active.style.transition = 'none';
+      active.style.transform  = `translateY(${pull}px) scale(${1 - pull * 0.001})`;
+    }
+  }
+}
+
+function onUp(e) {
+  if (!drag.on) return;
+  drag.on = false;
+  window.removeEventListener('pointermove', onMove);
+  window.removeEventListener('pointerup',     onUp);
+  window.removeEventListener('pointercancel', onUp);
+  document.querySelectorAll('.card-wrapper').forEach(w => w.classList.remove('is-dragging'));
+
+  if (drag.dir === 'h') {
+    const thr = window.innerWidth * 0.25;
+    if      (drag.dx < -thr && currentIdx < cards.length - 1) currentIdx++;
+    else if (drag.dx >  thr && currentIdx > 0)                currentIdx--;
+    positionCards(true);
+    renderDots();
+  } else if (drag.dir === 'v' && drag.dy > 120) {
+    positionCards(true);
+    setTimeout(openDir, 80);
+  } else {
+    positionCards(true);
+  }
+  drag.dir = null;
+}
+
+/* ════════════════════════════════════════════════
+   NAV DOTS
+   ════════════════════════════════════════════════ */
+function renderDots() {
+  const nav = document.getElementById('nav-dots');
+  nav.innerHTML = '';
+  cards.forEach((c, i) => {
+    const d = document.createElement('div');
+    d.className = 'nav-dot' + (i === currentIdx ? ' active' : '');
+    d.title = c.name;
+    d.addEventListener('click', () => {
+      if (i === currentIdx) return;
+      currentIdx = i; positionCards(true); renderDots();
+    });
+    nav.appendChild(d);
+  });
+}
+
+/* ════════════════════════════════════════════════
+   FORGE — card creator
+   ════════════════════════════════════════════════ */
+function openForge() {
+  if (isForging) return;
+  bgB64 = null; logoB64 = null;
+
+  // Full form reset
+  ['f-name','f-handle','f-url'].forEach(id => {
+    const el = document.getElementById(id);
+    el.value = ''; el.classList.remove('has-error');
+  });
+  document.getElementById('f-platform').value = 'Instagram';
+  ['err-name','err-url','err-bg','err-logo'].forEach(id => {
+    const el = document.getElementById(id); el.textContent = ''; el.classList.remove('show');
+  });
+  ['bg-thumb','logo-thumb'].forEach(id => {
+    const t = document.getElementById(id); t.style.backgroundImage = ''; t.style.display = 'none';
+  });
+  document.getElementById('bg-txt').textContent   = 'Upload background image';
+  document.getElementById('logo-txt').textContent = 'Upload logo / avatar';
+  // IMPORTANT: clear file inputs so onchange fires even if same file re-selected
+  document.getElementById('f-bg').value   = '';
+  document.getElementById('f-logo').value = '';
+  setLoading(false);
+
+  document.getElementById('forge-overlay').classList.add('open');
+  // Focus first field on next frame
+  requestAnimationFrame(() => document.getElementById('f-name').focus());
+}
+
+function closeForge() {
+  if (isForging) return;
+  document.getElementById('forge-overlay').classList.remove('open');
+}
+
+function setLoading(on) {
+  isForging = on;
+  const btn = document.getElementById('forge-btn');
+  btn.disabled = on;
+  document.getElementById('forge-lbl').style.display = on ? 'none' : '';
+  document.getElementById('forge-spin').style.display = on ? 'block' : 'none';
+}
+
+function validateForge() {
+  let ok = true;
+  const name = document.getElementById('f-name').value.trim();
+  const rawUrl = document.getElementById('f-url').value.trim();
+
+  const nameEl  = document.getElementById('f-name');
+  const urlEl   = document.getElementById('f-url');
+  const errName = document.getElementById('err-name');
+  const errUrl  = document.getElementById('err-url');
+
+  if (!name) {
+    nameEl.classList.add('has-error'); errName.classList.add('show'); ok = false;
+  } else {
+    nameEl.classList.remove('has-error'); errName.classList.remove('show');
+  }
+
+  const resolvedUrl = /^https?:\/\//i.test(rawUrl) ? rawUrl : 'https://' + rawUrl;
+  if (!rawUrl) {
+    urlEl.classList.add('has-error');
+    errUrl.textContent = 'URL is required.';
+    errUrl.classList.add('show'); ok = false;
+  } else if (!isUrl(resolvedUrl)) {
+    urlEl.classList.add('has-error');
+    errUrl.textContent = 'Must be a valid http:// or https:// URL.';
+    errUrl.classList.add('show'); ok = false;
+  } else {
+    urlEl.classList.remove('has-error'); errUrl.classList.remove('show');
+  }
+  return ok;
+}
+
+async function forgeCard() {
+  if (isForging) return;
+  if (!validateForge()) return;
+
+  setLoading(true);
+
+  const name     = document.getElementById('f-name').value.trim();
+  const handle   = document.getElementById('f-handle').value.trim();
+  const rawUrl   = document.getElementById('f-url').value.trim();
+  const url      = /^https?:\/\//i.test(rawUrl) ? rawUrl : 'https://' + rawUrl;
+  const platform = document.getElementById('f-platform').value;
+
+  const card = {
+    id: Date.now() + '_' + Math.random().toString(36).slice(2),
+    name, handle, url, platform,
+    bg:   bgB64   || null,
+    logo: logoB64 || null
+  };
+
+  // Pre-flight save test to catch quota before mutating state
+  const testCards = [...cards, card];
+  try {
+    localStorage.setItem(STORE_KEY, JSON.stringify(testCards));
+  } catch(e) {
+    setLoading(false);
+    const isQuota = e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED';
+    showErr(isQuota
+      ? 'Storage full — delete existing cards or use smaller images.'
+      : 'Could not save: ' + e.message);
+    return;
+  }
+
+  cards = testCards;
+  currentIdx = cards.length - 1;
+
+  setLoading(false);
+  closeForge();
+  toast('✦ Card forged & saved to vault');
+  await renderCards();
+}
+
+// Inline validation: clear errors as user types
+document.getElementById('f-name').addEventListener('input', () => {
+  document.getElementById('f-name').classList.remove('has-error');
+  document.getElementById('err-name').classList.remove('show');
+});
+document.getElementById('f-url').addEventListener('input', () => {
+  document.getElementById('f-url').classList.remove('has-error');
+  document.getElementById('err-url').classList.remove('show');
+});
+
+// Wire up file inputs
+document.getElementById('f-bg').addEventListener('change', e =>
+  handleUpload('f-bg', 'bg-thumb', 'bg-txt', 'err-bg', 680, 960, 0.80, v => { bgB64 = v; })
+);
+document.getElementById('f-logo').addEventListener('change', e =>
+  handleUpload('f-logo', 'logo-thumb', 'logo-txt', 'err-logo', 200, 200, 0.88, v => { logoB64 = v; })
+);
+
+// Forge btn
+document.getElementById('forge-btn').addEventListener('click', forgeCard);
+
+/* ════════════════════════════════════════════════
+   DIRECTORY
+   ════════════════════════════════════════════════ */
+function openDir() {
+  renderDirList();
+  document.getElementById('dir-overlay').classList.add('open');
+}
+function closeDir() {
+  document.getElementById('dir-overlay').classList.remove('open');
+}
+
+function renderDirList() {
+  const list  = document.getElementById('dir-list');
+  const count = document.getElementById('dir-count');
+  list.innerHTML = '';
+  count.textContent = cards.length ? `(${cards.length})` : '';
+
+  if (cards.length === 0) {
+    list.innerHTML = '<p style="text-align:center;color:var(--text-dim);font-size:0.83rem;padding:2.5rem 0;line-height:1.65">No cards yet.<br><strong style="color:var(--accent2)">Tap + to create one.</strong></p>';
+    return;
+  }
+
+  cards.forEach((card, i) => {
+    const el = document.createElement('div');
+    el.className = 'dir-card';
+    if (i === currentIdx) el.style.borderColor = 'rgba(99,102,241,0.4)';
+
+    const bgStyle = card.bg
+      ? `background-image:url(${card.bg});background-size:cover;background-position:center;`
+      : '';
+
+    el.innerHTML = `
+      <div class="dir-card-thumb" style="${bgStyle}"></div>
+      <div class="dir-card-info">
+        <div class="dir-card-name">${esc(card.name)}</div>
+        <div class="dir-card-handle">${esc(card.handle || '—')}</div>
+        <div class="dir-card-platform">${esc(card.platform || 'Custom')}</div>
+      </div>
+      <div class="dir-delete" title="Delete card">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+          <polyline points="3 6 5 6 21 6"/>
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+        </svg>
+      </div>`;
+
+    // Navigate to card
+    el.querySelector('.dir-card-info').addEventListener('click', () => {
+      currentIdx = i;
+      positionCards(true);
+      renderDots();
+      closeDir();
+    });
+
+    // Delete with confirmation
+    el.querySelector('.dir-delete').addEventListener('click', async ev => {
+      ev.stopPropagation();
+      const ok = await confirm2('Delete Card?', `"${card.name}" will be permanently removed from your vault.`);
+      if (!ok) return;
+      cards.splice(i, 1);
+      if (currentIdx >= cards.length) currentIdx = Math.max(0, cards.length - 1);
+      const saved = save();
+      if (saved) toast('Card removed from vault');
+      renderDirList();
+      // Don't call full async renderCards just for deletion — reposition existing DOM
+      const stage = document.getElementById('stage');
+      stage.querySelectorAll('.card-wrapper').forEach(el => el.remove());
+      // Full render needed since indices changed
+      renderCards();
+    });
+
+    list.appendChild(el);
+  });
+}
+
+/* ════════════════════════════════════════════════
+   SCALE SLIDER
+   ════════════════════════════════════════════════ */
+let scaleDebounce = null;
+function onScale(input) {
+  scale = input.value / 100;
+  document.documentElement.style.setProperty('--scale', scale);
+  document.getElementById('scale-val').textContent = scale.toFixed(1) + '×';
+  // Immediate layout update (no re-render needed for just resizing)
+  positionCards(false);
+  // Debounce full re-render (QR sizes change)
+  clearTimeout(scaleDebounce);
+  scaleDebounce = setTimeout(async () => {
+    try { localStorage.setItem(SCALE_KEY, scale); } catch {}
+    await renderCards();
+  }, 600);
+}
+
+/* ════════════════════════════════════════════════
+   GLOBAL ERROR SAFETY NET
+   ════════════════════════════════════════════════ */
+window.addEventListener('error', e => {
+  if (e.message && !e.message.includes('Script error'))
+    console.error('[QRVault]', e.message, e.lineno);
+});
+window.addEventListener('unhandledrejection', e => {
+  console.error('[QRVault] Unhandled promise rejection:', e.reason);
+  // Only surface to user if it's not a benign abort
+  if (e.reason && e.reason.name !== 'AbortError')
+    showErr('An unexpected error occurred. Check the console.');
+});
+
+/* ════════════════════════════════════════════════
+   BOOT
+   ════════════════════════════════════════════════ */
+(async function boot() {
+  load(); // restore cards + scale from localStorage
+
+  const libOk = await ensureQRLib();
+  if (!libOk) {
+    showErr('QR library failed to load — check your internet connection.');
+  }
+
+  await renderCards();
+  checkQuota();
+})();
+</script>
 </body>
 </html>
-
